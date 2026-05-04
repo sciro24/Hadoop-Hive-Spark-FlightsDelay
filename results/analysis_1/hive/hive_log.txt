@@ -11,42 +11,44 @@ WARNING: Please consider reporting this to the maintainers of org.apache.hadoop.
 WARNING: Use --illegal-access=warn to enable warnings of further illegal reflective access operations
 WARNING: All illegal access operations will be denied in a future release
 OK
-Time taken: 2.293 seconds
+Time taken: 2.058 seconds
 OK
 Time taken: 0.012 seconds
 OK
-Time taken: 0.33 seconds
+Time taken: 0.283 seconds
 OK
-Time taken: 0.12 seconds
+Time taken: 0.117 seconds
 OK
-Time taken: 0.071 seconds
+Time taken: 0.052 seconds
 WARNING: Hive-on-MR is deprecated in Hive 2 and may not be available in the future versions. Consider using a different execution engine (i.e. spark, tez) or using Hive 1.X releases.
-Query ID = diego_20260504175457_78655511-da15-4aa8-8e5c-b7206e6ebaf0
+Query ID = diego_20260504184556_c5e1bc56-a8ca-4e36-93f0-e31e303690aa
 Total jobs = 1
 Launching Job 1 out of 1
-Number of reduce tasks not specified. Estimated from input data size: 2
+Number of reduce tasks not specified. Estimated from input data size: 3
 In order to change the average load for a reducer (in bytes):
   set hive.exec.reducers.bytes.per.reducer=<number>
 In order to limit the maximum number of reducers:
   set hive.exec.reducers.max=<number>
 In order to set a constant number of reducers:
   set mapreduce.job.reduces=<number>
-Starting Job = job_1777897499430_0021, Tracking URL = http://localhost:8088/proxy/application_1777897499430_0021/
-Kill Command = /Users/diego/hadoop-3.4.1/bin/hadoop job  -kill job_1777897499430_0021
-Hadoop job information for Stage-1: number of mappers: 2; number of reducers: 2
-2026-05-04 17:55:04,996 Stage-1 map = 0%,  reduce = 0%
-2026-05-04 17:55:11,260 Stage-1 map = 50%,  reduce = 0%
-2026-05-04 17:55:13,324 Stage-1 map = 100%,  reduce = 0%
-2026-05-04 17:55:16,424 Stage-1 map = 100%,  reduce = 100%
-Ended Job = job_1777897499430_0021
+Starting Job = job_1777897499430_0051, Tracking URL = http://localhost:8088/proxy/application_1777897499430_0051/
+Kill Command = /Users/diego/hadoop-3.4.1/bin/hadoop job  -kill job_1777897499430_0051
+Hadoop job information for Stage-1: number of mappers: 3; number of reducers: 3
+2026-05-04 18:46:03,447 Stage-1 map = 0%,  reduce = 0%
+2026-05-04 18:46:09,719 Stage-1 map = 33%,  reduce = 0%
+2026-05-04 18:46:11,807 Stage-1 map = 67%,  reduce = 0%
+2026-05-04 18:46:14,904 Stage-1 map = 100%,  reduce = 0%
+2026-05-04 18:46:15,946 Stage-1 map = 100%,  reduce = 33%
+2026-05-04 18:46:16,987 Stage-1 map = 100%,  reduce = 100%
+Ended Job = job_1777897499430_0051
 Moving data to directory hdfs://localhost:9000/user/hive/warehouse/flights.db/results_airline_stats
 MapReduce Jobs Launched: 
-Stage-Stage-1: Map: 2  Reduce: 2   HDFS Read: 371122656 HDFS Write: 712613 SUCCESS
+Stage-Stage-1: Map: 3  Reduce: 3   HDFS Read: 686564920 HDFS Write: 719428 SUCCESS
 Total MapReduce CPU Time Spent: 0 msec
 OK
-Time taken: 21.249 seconds
+Time taken: 22.157 seconds
 WARNING: Hive-on-MR is deprecated in Hive 2 and may not be available in the future versions. Consider using a different execution engine (i.e. spark, tez) or using Hive 1.X releases.
-Query ID = diego_20260504175518_12905813-3448-4ee7-80e3-8f1e2bba881e
+Query ID = diego_20260504184618_7e9ddb67-81b5-4976-a172-19c8d99e4e36
 Total jobs = 1
 Launching Job 1 out of 1
 Number of reduce tasks determined at compile time: 1
@@ -56,25 +58,25 @@ In order to limit the maximum number of reducers:
   set hive.exec.reducers.max=<number>
 In order to set a constant number of reducers:
   set mapreduce.job.reduces=<number>
-Starting Job = job_1777897499430_0022, Tracking URL = http://localhost:8088/proxy/application_1777897499430_0022/
-Kill Command = /Users/diego/hadoop-3.4.1/bin/hadoop job  -kill job_1777897499430_0022
+Starting Job = job_1777897499430_0052, Tracking URL = http://localhost:8088/proxy/application_1777897499430_0052/
+Kill Command = /Users/diego/hadoop-3.4.1/bin/hadoop job  -kill job_1777897499430_0052
 Hadoop job information for Stage-1: number of mappers: 1; number of reducers: 1
-2026-05-04 17:55:27,816 Stage-1 map = 0%,  reduce = 0%
-2026-05-04 17:55:31,943 Stage-1 map = 100%,  reduce = 0%
-2026-05-04 17:55:36,075 Stage-1 map = 100%,  reduce = 100%
-Ended Job = job_1777897499430_0022
+2026-05-04 18:46:27,732 Stage-1 map = 0%,  reduce = 0%
+2026-05-04 18:46:30,889 Stage-1 map = 100%,  reduce = 0%
+2026-05-04 18:46:35,017 Stage-1 map = 100%,  reduce = 100%
+Ended Job = job_1777897499430_0052
 MapReduce Jobs Launched: 
-Stage-Stage-1: Map: 1  Reduce: 1   HDFS Read: 724429 HDFS Write: 583 SUCCESS
+Stage-Stage-1: Map: 1  Reduce: 1   HDFS Read: 731253 HDFS Write: 593 SUCCESS
 Total MapReduce CPU Time Spent: 0 msec
 OK
-9E	ABE	1	80	-44.0	438.0	14.63	0.0	["1"]
-9E	ABE	2	75	-42.0	113.0	-12.22	0.0133	["2"]
-9E	ABE	3	88	-47.0	309.0	-11.92	0.0	["3"]
-9E	ABE	4	86	-44.0	438.0	-1.01	0.0	["4"]
-9E	ABE	5	88	-39.0	182.0	0.99	0.0114	["5"]
-9E	ABE	6	89	-29.0	169.0	0.18	0.0112	["6"]
-9E	ABE	7	86	-33.0	245.0	9.98	0.0349	["7"]
-9E	ABE	8	85	-31.0	348.0	-2.52	0.0235	["8"]
-9E	ABE	9	81	-33.0	144.0	-9.06	0.0	["9"]
-9E	ABE	10	82	-34.0	575.0	-0.13	0.0	["10"]
-Time taken: 18.295 seconds, Fetched: 10 row(s)
+9E	ABE	1	159	-44.0	438.0	18.99	0.0	["1"]
+9E	ABE	2	136	-42.0	113.0	-13.9	0.0147	["2"]
+9E	ABE	3	162	-47.0	309.0	-15.91	0.0	["3"]
+9E	ABE	4	131	-44.0	438.0	3.08	0.0	["4"]
+9E	ABE	5	157	-39.0	182.0	1.83	0.0064	["5"]
+9E	ABE	6	171	-29.0	169.0	-2.04	0.0058	["6"]
+9E	ABE	7	167	-33.0	245.0	13.01	0.0359	["7"]
+9E	ABE	8	147	-31.0	348.0	-5.01	0.0136	["8"]
+9E	ABE	9	154	-33.0	144.0	-9.95	0.0	["9"]
+9E	ABE	10	145	-34.0	575.0	-0.74	0.0	["10"]
+Time taken: 18.76 seconds, Fetched: 10 row(s)

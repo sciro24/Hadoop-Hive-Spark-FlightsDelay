@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # ─── Benchmark completo: tutte le analisi × tutte le tecnologie × tutti i sample ─
 # Salva i risultati in benchmarks/results_local.csv tramite benchmark_tracker.py
 #
