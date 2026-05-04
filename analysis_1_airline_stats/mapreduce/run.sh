@@ -1,39 +1,50 @@
 #!/bin/bash
-# ─── Analisi 3.1 — MapReduce ─────────────────────────────────────────────────
+# ─── Analisi 3.1 — MapReduce (Hadoop Streaming) ──────────────────────────────
 set -e
 
-INPUT="data/cleaned/flight_data_2024_cleaned.csv"
-OUTPUT="results/analysis_1/mapreduce"
+INPUT_LOCAL="data/cleaned/flight_data_2024_cleaned.csv"
+HDFS_INPUT="/user/mapreduce/analysis_1/input"
+HDFS_OUTPUT="/user/mapreduce/analysis_1/output"
+OUTPUT_LOCAL="results/analysis_1/mapreduce"
 MAPPER="analysis_1_airline_stats/mapreduce/mapper.py"
 REDUCER="analysis_1_airline_stats/mapreduce/reducer.py"
+
+# Trova il jar di Hadoop Streaming
+STREAMING_JAR=$(find $HADOOP_HOME -name "hadoop-streaming-*.jar" | head -1)
 
 echo "=== Analisi 3.1 — MapReduce ==="
 echo "Start: $(date)"
 START=$(date +%s)
 
-# Rimuovi output precedente
-rm -rf "$OUTPUT"
-mkdir -p "$OUTPUT"
+mkdir -p "$OUTPUT_LOCAL"
 
-# Esecuzione in locale con Hadoop Streaming
-hadoop jar "$HADOOP_HOME/share/hadoop/tools/lib/hadoop-streaming-*.jar" \
-    -input    "$INPUT" \
-    -output   "$OUTPUT/raw" \
-    -mapper   "python3 $MAPPER" \
-    -reducer  "python3 $REDUCER" \
-    -file     "$MAPPER" \
-    -file     "$REDUCER"
+# ─── Carica input su HDFS ────────────────────────────────────────────────────
+echo "Caricamento CSV su HDFS..."
+hadoop fs -mkdir -p "$HDFS_INPUT"
+hadoop fs -put -f "$INPUT_LOCAL" "$HDFS_INPUT/"
 
-# Salva output
-hadoop fs -getmerge "$OUTPUT/raw" "$OUTPUT/output.csv"
+# ─── Rimuovi output HDFS precedente ─────────────────────────────────────────
+hadoop fs -rm -r -f "$HDFS_OUTPUT"
+
+# ─── Lancia job Hadoop Streaming ─────────────────────────────────────────────
+echo "Lancio job MapReduce..."
+hadoop jar "$STREAMING_JAR" \
+    -input   "$HDFS_INPUT/flight_data_2024_cleaned.csv" \
+    -output  "$HDFS_OUTPUT" \
+    -mapper  "python3 mapper.py" \
+    -reducer "python3 reducer.py" \
+    -file    "$MAPPER" \
+    -file    "$REDUCER"
+
+# ─── Scarica output da HDFS ──────────────────────────────────────────────────
+echo "Download risultati..."
+hadoop fs -getmerge "$HDFS_OUTPUT" "$OUTPUT_LOCAL/output.csv"
 
 END=$(date +%s)
 ELAPSED=$((END - START))
 echo "End: $(date)"
 echo "Tempo di esecuzione: ${ELAPSED}s"
-echo "Risultato: $OUTPUT/output.csv"
 
-# Prime 10 righe
 echo ""
 echo "=== Prime 10 righe ==="
-head -10 "$OUTPUT/output.csv"
+head -10 "$OUTPUT_LOCAL/output.csv"
