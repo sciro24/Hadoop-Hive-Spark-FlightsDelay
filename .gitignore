@@ -1,20 +1,19 @@
-# Dataset
+# ─── Dataset ───────────────────────────────────────────────
 data/raw/*
 !data/raw/.gitkeep
 data/samples/*
 !data/samples/.gitkeep
+data/cleaned/*
+!data/cleaned/.gitkeep
 
-# EDA TEMPORANEO
-/eda
-
-# Spark and Hadoop logs/outputs
+# ─── Spark / Hadoop ────────────────────────────────────────
 spark-warehouse/
 metastore_db/
 derby.log
 logs/
 *.log
 
-# PySpark / Python caches and virtual environments
+# ─── Python ────────────────────────────────────────────────
 __pycache__/
 *.py[cod]
 *$py.class
@@ -23,19 +22,17 @@ venv/
 .venv/
 env/
 .env/
-*.pyc
-spark-warehouse/
 
-# Jupyter Notebook
+# ─── Jupyter ───────────────────────────────────────────────
 .ipynb_checkpoints/
 
-# IDE / Editor files
+# ─── IDE / Editor ──────────────────────────────────────────
 .vscode/
 .idea/
 *.swp
 *.swo
 
-# MacOS files
+# ─── macOS ─────────────────────────────────────────────────
 .DS_Store
 .AppleDouble
 .LSOverride
