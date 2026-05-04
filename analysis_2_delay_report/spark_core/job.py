@@ -1,0 +1,169 @@
+#!/usr/bin/env python3
+"""
+Analisi 3.2 — Report Ritardi per Aeroporto e Periodo Temporale
+Tecnologia: Spark Core 3.5.8 (RDD API)
+"""
+import os
+import time
+from pathlib import Path
+from pyspark import SparkContext, SparkConf
+
+# ─── Paths ────────────────────────────────────────────────────────────────────
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+INPUT_PATH   = str(PROJECT_ROOT / "data" / "cleaned" / "flight_data_2024_cleaned.csv")
+OUTPUT_PATH  = str(PROJECT_ROOT / "results" / "analysis_2" / "spark_core")
+os.makedirs(OUTPUT_PATH, exist_ok=True)
+
+# ─── SparkContext ─────────────────────────────────────────────────────────────
+conf = SparkConf() \
+    .setAppName("Analysis_3.2_DelayReport_SparkCore") \
+    .setMaster("local[*]") \
+    .set("spark.driver.memory", "4g")
+
+sc = SparkContext(conf=conf)
+sc.setLogLevel("WARN")
+
+print(f"Spark versione: {sc.version}")
+print(f"Input: {INPUT_PATH}")
+
+start = time.time()
+
+# ─── 1. Caricamento e parsing ─────────────────────────────────────────────────
+raw = sc.textFile(INPUT_PATH)
+header = raw.first()
+
+def parse_line(line):
+    """
+    Colonne CSV cleaned:
+    0:fl_date, 1:year, 2:month, 3:op_unique_carrier,
+    4:origin, 5:dest, 6:dep_delay, 7:arr_delay,
+    8:cancelled, 9:cancellation_code, 10:carrier_delay,
+    11:weather_delay, 12:nas_delay, 13:security_delay, 14:late_aircraft_delay
+    """
+    fields = line.split(",")
+    if len(fields) < 15:
+        return None
+    try:
+        origin    = fields[4].strip()
+        month     = int(fields[2].strip())
+        dep_delay = float(fields[6].strip()) if fields[6].strip() not in ("", "nan", "NA") else None
+        arr_delay = float(fields[7].strip()) if fields[7].strip() not in ("", "nan", "NA") else None
+        carrier_d = float(fields[10].strip()) if fields[10].strip() not in ("", "nan", "NA") else 0.0
+        weather_d = float(fields[11].strip()) if fields[11].strip() not in ("", "nan", "NA") else 0.0
+        nas_d     = float(fields[12].strip()) if fields[12].strip() not in ("", "nan", "NA") else 0.0
+        security_d= float(fields[13].strip()) if fields[13].strip() not in ("", "nan", "NA") else 0.0
+        late_d    = float(fields[14].strip()) if fields[14].strip() not in ("", "nan", "NA") else 0.0
+        if not origin or not month:
+            return None
+        return (origin, month, dep_delay, arr_delay, carrier_d, weather_d, nas_d, security_d, late_d)
+    except (ValueError, IndexError):
+        return None
+
+records = raw \
+    .filter(lambda line: line != header) \
+    .map(parse_line) \
+    .filter(lambda x: x is not None)
+
+records.cache()
+
+# ─── 2. Fasce di ritardo ──────────────────────────────────────────────────────
+def assign_band(dep_delay):
+    if dep_delay is None:
+        return "low"
+    if dep_delay < 15:
+        return "low"
+    elif dep_delay <= 60:
+        return "medium"
+    else:
+        return "high"
+
+# Chiave: (origin, month, band) → (dep_delay, arr_delay, count)
+def to_band_kv(rec):
+    origin, month, dep_delay, arr_delay, *_ = rec
+    band = assign_band(dep_delay)
+    dep  = dep_delay if dep_delay is not None else 0.0
+    arr  = arr_delay if arr_delay is not None else 0.0
+    return ((origin, month, band), (dep, arr, 1))
+
+def merge_band(a, b):
+    return (a[0] + b[0], a[1] + b[1], a[2] + b[2])
+
+delay_bands = records \
+    .map(to_band_kv) \
+    .reduceByKey(merge_band) \
+    .map(lambda kv: (
+        kv[0][0],                           # origin
+        kv[0][1],                           # month
+        kv[0][2],                           # band
+        kv[1][2],                           # num_flights
+        round(kv[1][0] / kv[1][2], 2),     # avg_dep_delay
+        round(kv[1][1] / kv[1][2], 2)      # avg_arr_delay
+    )) \
+    .sortBy(lambda x: (x[0], x[1], x[2]))
+
+# ─── 3. Top 3 cause per (origin, month) ──────────────────────────────────────
+CAUSES = ["carrier_delay", "weather_delay", "nas_delay", "security_delay", "late_aircraft_delay"]
+CAUSE_IDX = {c: i for i, c in enumerate(CAUSES)}
+
+def to_cause_kv(rec):
+    origin, month, _, _, carrier_d, weather_d, nas_d, security_d, late_d = rec
+    cause_values = [carrier_d, weather_d, nas_d, security_d, late_d]
+    # Emetti una coppia per ogni causa con valore > 0
+    result = []
+    for i, val in enumerate(cause_values):
+        if val > 0:
+            result.append(((origin, month, CAUSES[i]), (val, 1)))
+    return result
+
+causes_avg = records \
+    .flatMap(to_cause_kv) \
+    .reduceByKey(lambda a, b: (a[0] + b[0], a[1] + b[1])) \
+    .map(lambda kv: (
+        (kv[0][0], kv[0][1]),               # (origin, month)
+        (kv[0][2], round(kv[1][0] / kv[1][1], 4))  # (cause, avg_minutes)
+    )) \
+    .groupByKey() \
+    .mapValues(lambda causes: sorted(causes, key=lambda x: -x[1])[:3]) \
+    .flatMap(lambda kv: [
+        (kv[0][0], kv[0][1], cause, avg_min, rank + 1)
+        for rank, (cause, avg_min) in enumerate(kv[1])
+    ]) \
+    .sortBy(lambda x: (x[0], x[1], x[4]))
+
+# ─── 4. Salvataggio ───────────────────────────────────────────────────────────
+# Delay bands
+delay_bands_out = delay_bands.map(
+    lambda x: f"{x[0]}|{x[1]}|{x[2]}|{x[3]}|{x[4]}|{x[5]}"
+)
+delay_bands_out.coalesce(1).saveAsTextFile(f"{OUTPUT_PATH}/delay_report_raw")
+
+# Causes
+causes_out = causes_avg.map(
+    lambda x: f"{x[0]}|{x[1]}|{x[2]}|{x[3]}|{x[4]}"
+)
+causes_out.coalesce(1).saveAsTextFile(f"{OUTPUT_PATH}/delay_causes_raw")
+
+# Merge part files
+import glob, shutil
+for folder, outfile in [
+    ("delay_report_raw", "output_delay_report.csv"),
+    ("delay_causes_raw",  "output_delay_causes.csv")
+]:
+    parts = glob.glob(f"{OUTPUT_PATH}/{folder}/part-*")
+    if parts:
+        shutil.copy(parts[0], f"{OUTPUT_PATH}/{outfile}")
+
+elapsed = round(time.time() - start, 2)
+print(f"\nTempo di esecuzione: {elapsed}s")
+print(f"Risultati in: {OUTPUT_PATH}")
+
+# ─── 5. Prime 10 righe ───────────────────────────────────────────────────────
+print("\n=== Prime 10 righe delay_report ===")
+for row in delay_bands.take(10):
+    print(row)
+
+print("\n=== Prime 10 righe delay_causes ===")
+for row in causes_avg.take(10):
+    print(row)
+
+sc.stop()

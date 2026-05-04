@@ -5,7 +5,7 @@ Wrappa qualsiasi comando (MapReduce, Hive, Spark) misurando:
   - tempo di esecuzione
   - dimensione input
   - tecnologia / analisi
-e appende il risultato a benchmarks/results_local.csv
+e salva/sovrascrive il risultato in benchmarks/results_local.csv
 
 Uso:
   python3 benchmarks/benchmark_tracker.py \
@@ -34,19 +34,38 @@ def get_file_info(filepath: str):
     if not p.exists():
         return 0.0, "N/A"
     size_mb = round(p.stat().st_size / (1024 * 1024), 2)
-    # Conta righe velocemente
     with open(p, "rb") as f:
-        rows = sum(1 for _ in f) - 1  # -1 per header
+        rows = sum(1 for _ in f) - 1
     return size_mb, rows
 
-def append_result(row: dict):
+def load_results() -> list[dict]:
+    if not RESULTS_FILE.exists():
+        return []
+    with open(RESULTS_FILE, newline="") as f:
+        return list(csv.DictReader(f))
+
+def save_results(rows: list[dict]):
     RESULTS_FILE.parent.mkdir(parents=True, exist_ok=True)
-    write_header = not RESULTS_FILE.exists()
-    with open(RESULTS_FILE, "a", newline="") as f:
+    with open(RESULTS_FILE, "w", newline="") as f:
         writer = csv.DictWriter(f, fieldnames=FIELDNAMES)
-        if write_header:
-            writer.writeheader()
-        writer.writerow(row)
+        writer.writeheader()
+        writer.writerows(rows)
+
+def upsert_result(new_row: dict):
+    """Sovrascrive la riga con stessa (analysis, technology, environment, input_file),
+    altrimenti appende."""
+    rows = load_results()
+    key = ("analysis", "technology", "environment", "input_file")
+    replaced = False
+    for i, row in enumerate(rows):
+        if all(row.get(k) == new_row[k] for k in key):
+            rows[i] = new_row
+            replaced = True
+            break
+    if not replaced:
+        rows.append(new_row)
+    save_results(rows)
+    return replaced
 
 def run(analysis, tech, input_file, cmd, env="local", notes=""):
     print(f"\n{'='*60}")
@@ -64,23 +83,24 @@ def run(analysis, tech, input_file, cmd, env="local", notes=""):
     elapsed = round(time.time() - start, 2)
 
     row = {
-        "timestamp":    datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-        "analysis":     analysis,
-        "technology":   tech,
-        "environment":  env,
-        "input_file":   input_file,
+        "timestamp":     datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "analysis":      analysis,
+        "technology":    tech,
+        "environment":   env,
+        "input_file":    input_file,
         "input_size_mb": size_mb,
-        "input_rows":   n_rows,
-        "elapsed_sec":  elapsed,
-        "exit_code":    result.returncode,
-        "notes":        notes
+        "input_rows":    n_rows,
+        "elapsed_sec":   elapsed,
+        "exit_code":     result.returncode,
+        "notes":         notes
     }
 
-    append_result(row)
+    replaced = upsert_result(row)
+    action   = "aggiornato" if replaced else "aggiunto"
 
     status = "✅ OK" if result.returncode == 0 else "❌ FAILED"
     print(f"\n{status} — Tempo: {elapsed}s")
-    print(f"Risultato salvato in: {RESULTS_FILE}\n")
+    print(f"Record {action} in: {RESULTS_FILE}\n")
 
     return result.returncode
 
