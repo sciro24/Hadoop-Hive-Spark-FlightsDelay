@@ -2,7 +2,10 @@
 # ─── Analisi 3.3 — MapReduce (Hadoop Streaming) ──────────────────────────────
 set -e
 
-INPUT_LOCAL="data/cleaned/flight_data_2024_cleaned.csv"
+# Usa il sample passato dal benchmark runner, altrimenti il cleaned completo
+INPUT="${BENCHMARK_INPUT:-data/cleaned/flight_data_2024_cleaned.csv}"
+INPUT_FILENAME=$(basename "$INPUT")   # ← nome file dinamico
+
 HDFS_INPUT="/user/mapreduce/analysis_3/input"
 HDFS_OUTPUT="/user/mapreduce/analysis_3/output"
 OUTPUT_LOCAL="results/analysis_3/mapreduce"
@@ -12,6 +15,7 @@ REDUCER="analysis_3_ranking/mapreduce/reducer.py"
 STREAMING_JAR=$(find $HADOOP_HOME -name "hadoop-streaming-*.jar" | head -1)
 
 echo "=== Analisi 3.3 — MapReduce ==="
+echo "Input: $INPUT"
 echo "Start: $(date)"
 START=$(date +%s)
 
@@ -19,13 +23,13 @@ mkdir -p "$OUTPUT_LOCAL"
 
 echo "Caricamento CSV su HDFS..."
 hadoop fs -mkdir -p "$HDFS_INPUT"
-hadoop fs -put -f "$INPUT_LOCAL" "$HDFS_INPUT/"
+hadoop fs -put -f "$INPUT" "$HDFS_INPUT/"
 
 hadoop fs -rm -r -f "$HDFS_OUTPUT"
 
 echo "Lancio job MapReduce..."
 hadoop jar "$STREAMING_JAR" \
-    -input   "$HDFS_INPUT/flight_data_2024_cleaned.csv" \
+    -input   "$HDFS_INPUT/$INPUT_FILENAME" \
     -output  "$HDFS_OUTPUT" \
     -mapper  "python3 mapper.py" \
     -reducer "python3 reducer.py" \
