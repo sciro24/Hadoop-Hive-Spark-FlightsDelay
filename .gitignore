@@ -1,0 +1,38 @@
+# Dataset
+data/raw/*
+!data/raw/.gitkeep
+data/samples/*
+!data/samples/.gitkeep
+
+# Spark and Hadoop logs/outputs
+spark-warehouse/
+metastore_db/
+derby.log
+logs/
+*.log
+
+# PySpark / Python caches and virtual environments
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+venv/
+.venv/
+env/
+.env/
+
+# Jupyter Notebook
+.ipynb_checkpoints/
+
+# IDE / Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# MacOS files
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon
+._*
