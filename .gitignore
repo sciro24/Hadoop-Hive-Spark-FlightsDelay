@@ -4,6 +4,9 @@ data/raw/*
 data/samples/*
 !data/samples/.gitkeep
 
+# EDA TEMPORANEO
+/eda
+
 # Spark and Hadoop logs/outputs
 spark-warehouse/
 metastore_db/
@@ -20,6 +23,8 @@ venv/
 .venv/
 env/
 .env/
+*.pyc
+spark-warehouse/
 
 # Jupyter Notebook
 .ipynb_checkpoints/
