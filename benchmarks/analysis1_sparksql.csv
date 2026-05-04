@@ -1,0 +1,5 @@
+sample_size,spark_sql_seconds,hive_seconds
+10%,0.78,
+25%,0.67,
+50%,1.13,
+100%,7.62,48.1
