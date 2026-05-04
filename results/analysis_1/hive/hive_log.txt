@@ -1,0 +1,80 @@
+SLF4J: Class path contains multiple SLF4J bindings.
+SLF4J: Found binding in [jar:file:/Users/diego/hive-2.3.9/lib/log4j-slf4j-impl-2.6.2.jar!/org/slf4j/impl/StaticLoggerBinder.class]
+SLF4J: Found binding in [jar:file:/Users/diego/hadoop-3.4.1/share/hadoop/common/lib/slf4j-reload4j-1.7.36.jar!/org/slf4j/impl/StaticLoggerBinder.class]
+SLF4J: See http://www.slf4j.org/codes.html#multiple_bindings for an explanation.
+SLF4J: Actual binding is of type [org.apache.logging.slf4j.Log4jLoggerFactory]
+
+Logging initialized using configuration in jar:file:/Users/diego/hive-2.3.9/lib/hive-common-2.3.9.jar!/hive-log4j2.properties Async: true
+WARNING: An illegal reflective access operation has occurred
+WARNING: Illegal reflective access by org.apache.hadoop.hive.common.StringInternUtils (file:/Users/diego/hive-2.3.9/lib/hive-common-2.3.9.jar) to field java.net.URI.string
+WARNING: Please consider reporting this to the maintainers of org.apache.hadoop.hive.common.StringInternUtils
+WARNING: Use --illegal-access=warn to enable warnings of further illegal reflective access operations
+WARNING: All illegal access operations will be denied in a future release
+OK
+Time taken: 2.34 seconds
+OK
+Time taken: 0.014 seconds
+OK
+Time taken: 0.037 seconds
+OK
+Time taken: 0.165 seconds
+OK
+Time taken: 0.013 seconds
+WARNING: Hive-on-MR is deprecated in Hive 2 and may not be available in the future versions. Consider using a different execution engine (i.e. spark, tez) or using Hive 1.X releases.
+Query ID = diego_20260504173623_e48b59c7-51ac-48cb-bcd4-a157c20ca261
+Total jobs = 1
+Launching Job 1 out of 1
+Number of reduce tasks not specified. Estimated from input data size: 2
+In order to change the average load for a reducer (in bytes):
+  set hive.exec.reducers.bytes.per.reducer=<number>
+In order to limit the maximum number of reducers:
+  set hive.exec.reducers.max=<number>
+In order to set a constant number of reducers:
+  set mapreduce.job.reduces=<number>
+Starting Job = job_1777897499430_0017, Tracking URL = http://localhost:8088/proxy/application_1777897499430_0017/
+Kill Command = /Users/diego/hadoop-3.4.1/bin/hadoop job  -kill job_1777897499430_0017
+Hadoop job information for Stage-1: number of mappers: 2; number of reducers: 2
+2026-05-04 17:36:32,944 Stage-1 map = 0%,  reduce = 0%
+2026-05-04 17:36:39,190 Stage-1 map = 50%,  reduce = 0%
+2026-05-04 17:36:41,265 Stage-1 map = 100%,  reduce = 0%
+2026-05-04 17:36:45,388 Stage-1 map = 100%,  reduce = 100%
+Ended Job = job_1777897499430_0017
+Moving data to directory hdfs://localhost:9000/user/hive/warehouse/flights.db/results_airline_stats
+MapReduce Jobs Launched: 
+Stage-Stage-1: Map: 2  Reduce: 2   HDFS Read: 371122656 HDFS Write: 712613 SUCCESS
+Total MapReduce CPU Time Spent: 0 msec
+OK
+Time taken: 23.878 seconds
+WARNING: Hive-on-MR is deprecated in Hive 2 and may not be available in the future versions. Consider using a different execution engine (i.e. spark, tez) or using Hive 1.X releases.
+Query ID = diego_20260504173647_3fa62626-2fe4-4a13-b858-55e79d9d9d46
+Total jobs = 1
+Launching Job 1 out of 1
+Number of reduce tasks determined at compile time: 1
+In order to change the average load for a reducer (in bytes):
+  set hive.exec.reducers.bytes.per.reducer=<number>
+In order to limit the maximum number of reducers:
+  set hive.exec.reducers.max=<number>
+In order to set a constant number of reducers:
+  set mapreduce.job.reduces=<number>
+Starting Job = job_1777897499430_0018, Tracking URL = http://localhost:8088/proxy/application_1777897499430_0018/
+Kill Command = /Users/diego/hadoop-3.4.1/bin/hadoop job  -kill job_1777897499430_0018
+Hadoop job information for Stage-1: number of mappers: 1; number of reducers: 1
+2026-05-04 17:36:57,217 Stage-1 map = 0%,  reduce = 0%
+2026-05-04 17:37:00,390 Stage-1 map = 100%,  reduce = 0%
+2026-05-04 17:37:04,529 Stage-1 map = 100%,  reduce = 100%
+Ended Job = job_1777897499430_0018
+MapReduce Jobs Launched: 
+Stage-Stage-1: Map: 1  Reduce: 1   HDFS Read: 724429 HDFS Write: 583 SUCCESS
+Total MapReduce CPU Time Spent: 0 msec
+OK
+9E	ABE	1	80	-44.0	438.0	14.63	0.0	["1"]
+9E	ABE	2	75	-42.0	113.0	-12.22	0.0133	["2"]
+9E	ABE	3	88	-47.0	309.0	-11.92	0.0	["3"]
+9E	ABE	4	86	-44.0	438.0	-1.01	0.0	["4"]
+9E	ABE	5	88	-39.0	182.0	0.99	0.0114	["5"]
+9E	ABE	6	89	-29.0	169.0	0.18	0.0112	["6"]
+9E	ABE	7	86	-33.0	245.0	9.98	0.0349	["7"]
+9E	ABE	8	85	-31.0	348.0	-2.52	0.0235	["8"]
+9E	ABE	9	81	-33.0	144.0	-9.06	0.0	["9"]
+9E	ABE	10	82	-34.0	575.0	-0.13	0.0	["10"]
+Time taken: 17.756 seconds, Fetched: 10 row(s)
