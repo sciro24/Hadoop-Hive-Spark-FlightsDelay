@@ -43,6 +43,10 @@ TBLPROPERTIES ('skip.header.line.count'='1');
 echo "Esecuzione query Hive..."
 hive -f "$HQL" 2>&1 | tee "$OUTPUT_DIR/hive_log.txt"
 
+# ─── Pulizia output precedente ────────────────────────────────────────────────
+rm -f  "$OUTPUT_DIR/output.csv"
+rm -rf "$OUTPUT_DIR/raw"
+
 # ─── Esporta risultato ────────────────────────────────────────────────────────
 echo "Esportazione risultati..."
 hive -e "
@@ -58,12 +62,12 @@ SELECT
     max_arr_delay,
     avg_arr_delay,
     cancel_rate,
-    months_active
+    CONCAT_WS(',', SORT_ARRAY(months_active))
 FROM results_airline_stats
 ORDER BY carrier, origin, month;
 " 2>/dev/null
 
-# Aggiungi header e unisci i part file
+# Header + dati
 echo "carrier|origin|month|num_flights|min_arr_delay|max_arr_delay|avg_arr_delay|cancel_rate|months_active" \
     > "$OUTPUT_DIR/output.csv"
 

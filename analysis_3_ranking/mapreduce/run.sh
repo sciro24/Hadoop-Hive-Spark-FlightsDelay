@@ -37,7 +37,8 @@ hadoop jar "$STREAMING_JAR" \
     -file    "$REDUCER"
 
 echo "Download risultati..."
-hadoop fs -getmerge "$HDFS_OUTPUT" "$OUTPUT_LOCAL/output.csv"
+echo "origin|carrier|num_flights|avg_dep|avg_arr|cancel_rate|avg_dep_airport|dep_diff|rank" > "$OUTPUT_LOCAL/output.csv"
+hadoop fs -cat "$HDFS_OUTPUT/part-*" >> "$OUTPUT_LOCAL/output.csv"
 
 END=$(date +%s)
 echo "End: $(date)"

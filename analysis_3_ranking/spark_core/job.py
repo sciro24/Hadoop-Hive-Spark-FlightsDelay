@@ -122,7 +122,10 @@ out.coalesce(1).saveAsTextFile(f"{OUTPUT_PATH}/ranking_raw")
 
 parts = glob.glob(f"{OUTPUT_PATH}/ranking_raw/part-*")
 if parts:
-    shutil.copy(parts[0], f"{OUTPUT_PATH}/output.csv")
+    with open(f"{OUTPUT_PATH}/output.csv", "w") as fout:
+        fout.write("origin|carrier|num_flights|avg_dep|avg_arr|cancel_rate|avg_dep_airport|dep_diff|rank\n")
+        with open(parts[0], "r") as fin:
+            shutil.copyfileobj(fin, fout)
 
 elapsed = round(time.time() - start, 2)
 print(f"\nTempo di esecuzione: {elapsed}s")

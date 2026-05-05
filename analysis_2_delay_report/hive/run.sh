@@ -54,8 +54,11 @@ hive -e "USE flights; INSERT OVERWRITE LOCAL DIRECTORY '$OUTPUT_DIR/delay_causes
 ROW FORMAT DELIMITED FIELDS TERMINATED BY '|'
 SELECT * FROM results_delay_causes ORDER BY origin, month, rank_pos;" 2>/dev/null
 
-cat "$OUTPUT_DIR"/delay_report/* > "$OUTPUT_DIR/output_delay_report.csv" 2>/dev/null || true
-cat "$OUTPUT_DIR"/delay_causes/*  > "$OUTPUT_DIR/output_delay_causes.csv"  2>/dev/null || true
+echo "origin|month|delay_band|num_flights|avg_dep_delay|avg_arr_delay" > "$OUTPUT_DIR/output_delay_report.csv"
+cat "$OUTPUT_DIR"/delay_report/* >> "$OUTPUT_DIR/output_delay_report.csv" 2>/dev/null || true
+
+echo "origin|month|cause|avg_minutes|rank_pos" > "$OUTPUT_DIR/output_delay_causes.csv"
+cat "$OUTPUT_DIR"/delay_causes/* >> "$OUTPUT_DIR/output_delay_causes.csv" 2>/dev/null || true
 
 END=$(date +%s)
 echo "End: $(date)"

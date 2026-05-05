@@ -1,0 +1,11 @@
+origin|month|cause|avg_minutes|rank
+ABE|1|weather_delay|180.5|1
+ABE|1|carrier_delay|103.74242424242425|2
+ABE|1|late_aircraft_delay|89.73134328358209|3
+ABE|2|weather_delay|266.6|1
+ABE|2|carrier_delay|145.88|2
+ABE|2|late_aircraft_delay|68.84210526315789|3
+ABE|3|carrier_delay|77.3076923076923|1
+ABE|3|late_aircraft_delay|72.625|2
+ABE|3|nas_delay|57.77777777777778|3
+ABE|4|carrier_delay|148.864406779661|1

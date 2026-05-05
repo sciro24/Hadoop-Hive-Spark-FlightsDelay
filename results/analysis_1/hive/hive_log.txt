@@ -1,0 +1,129 @@
+SLF4J: Class path contains multiple SLF4J bindings.
+SLF4J: Found binding in [jar:file:/Users/diego/hive-2.3.9/lib/log4j-slf4j-impl-2.6.2.jar!/org/slf4j/impl/StaticLoggerBinder.class]
+SLF4J: Found binding in [jar:file:/Users/diego/hadoop-3.4.1/share/hadoop/common/lib/slf4j-reload4j-1.7.36.jar!/org/slf4j/impl/StaticLoggerBinder.class]
+SLF4J: See http://www.slf4j.org/codes.html#multiple_bindings for an explanation.
+SLF4J: Actual binding is of type [org.apache.logging.slf4j.Log4jLoggerFactory]
+
+Logging initialized using configuration in jar:file:/Users/diego/hive-2.3.9/lib/hive-common-2.3.9.jar!/hive-log4j2.properties Async: true
+WARNING: An illegal reflective access operation has occurred
+WARNING: Illegal reflective access by org.apache.hadoop.hive.common.StringInternUtils (file:/Users/diego/hive-2.3.9/lib/hive-common-2.3.9.jar) to field java.net.URI.string
+WARNING: Please consider reporting this to the maintainers of org.apache.hadoop.hive.common.StringInternUtils
+WARNING: Use --illegal-access=warn to enable warnings of further illegal reflective access operations
+WARNING: All illegal access operations will be denied in a future release
+OK
+Time taken: 1.963 seconds
+OK
+Time taken: 0.012 seconds
+OK
+Time taken: 0.284 seconds
+OK
+Time taken: 0.101 seconds
+OK
+Time taken: 0.049 seconds
+WARNING: Hive-on-MR is deprecated in Hive 2 and may not be available in the future versions. Consider using a different execution engine (i.e. spark, tez) or using Hive 1.X releases.
+Query ID = diego_20260505120116_6d2004e8-962b-4e52-99e1-e0e48acecaea
+Total jobs = 5
+Launching Job 1 out of 5
+Number of reduce tasks not specified. Estimated from input data size: 3
+In order to change the average load for a reducer (in bytes):
+  set hive.exec.reducers.bytes.per.reducer=<number>
+In order to limit the maximum number of reducers:
+  set hive.exec.reducers.max=<number>
+In order to set a constant number of reducers:
+  set mapreduce.job.reduces=<number>
+Starting Job = job_1777897499430_0133, Tracking URL = http://localhost:8088/proxy/application_1777897499430_0133/
+Kill Command = /Users/diego/hadoop-3.4.1/bin/hadoop job  -kill job_1777897499430_0133
+Hadoop job information for Stage-1: number of mappers: 3; number of reducers: 3
+2026-05-05 12:01:22,387 Stage-1 map = 0%,  reduce = 0%
+2026-05-05 12:01:28,650 Stage-1 map = 33%,  reduce = 0%
+2026-05-05 12:01:31,739 Stage-1 map = 67%,  reduce = 0%
+2026-05-05 12:01:32,765 Stage-1 map = 100%,  reduce = 0%
+2026-05-05 12:01:34,825 Stage-1 map = 100%,  reduce = 100%
+Ended Job = job_1777897499430_0133
+Launching Job 2 out of 5
+Number of reduce tasks not specified. Estimated from input data size: 3
+In order to change the average load for a reducer (in bytes):
+  set hive.exec.reducers.bytes.per.reducer=<number>
+In order to limit the maximum number of reducers:
+  set hive.exec.reducers.max=<number>
+In order to set a constant number of reducers:
+  set mapreduce.job.reduces=<number>
+Starting Job = job_1777897499430_0134, Tracking URL = http://localhost:8088/proxy/application_1777897499430_0134/
+Kill Command = /Users/diego/hadoop-3.4.1/bin/hadoop job  -kill job_1777897499430_0134
+Hadoop job information for Stage-4: number of mappers: 3; number of reducers: 3
+2026-05-05 12:01:46,330 Stage-4 map = 0%,  reduce = 0%
+2026-05-05 12:01:51,550 Stage-4 map = 33%,  reduce = 0%
+2026-05-05 12:01:52,582 Stage-4 map = 67%,  reduce = 0%
+2026-05-05 12:01:53,607 Stage-4 map = 100%,  reduce = 0%
+2026-05-05 12:01:55,663 Stage-4 map = 100%,  reduce = 33%
+2026-05-05 12:01:56,686 Stage-4 map = 100%,  reduce = 67%
+2026-05-05 12:01:57,728 Stage-4 map = 100%,  reduce = 100%
+Ended Job = job_1777897499430_0134
+Stage-8 is selected by condition resolver.
+Stage-9 is filtered out by condition resolver.
+Stage-2 is filtered out by condition resolver.
+SLF4J: Class path contains multiple SLF4J bindings.
+SLF4J: Found binding in [jar:file:/Users/diego/hive-2.3.9/lib/log4j-slf4j-impl-2.6.2.jar!/org/slf4j/impl/StaticLoggerBinder.class]
+SLF4J: Found binding in [jar:file:/Users/diego/hadoop-3.4.1/share/hadoop/common/lib/slf4j-reload4j-1.7.36.jar!/org/slf4j/impl/StaticLoggerBinder.class]
+SLF4J: See http://www.slf4j.org/codes.html#multiple_bindings for an explanation.
+SLF4J: Actual binding is of type [org.apache.logging.slf4j.Log4jLoggerFactory]
+WARNING: An illegal reflective access operation has occurred
+WARNING: Illegal reflective access by org.apache.hadoop.hive.ql.exec.SerializationUtilities$ArraysAsListSerializer (file:/Users/diego/hive-2.3.9/lib/hive-exec-2.3.9.jar) to field java.util.Arrays$ArrayList.a
+WARNING: Please consider reporting this to the maintainers of org.apache.hadoop.hive.ql.exec.SerializationUtilities$ArraysAsListSerializer
+WARNING: Use --illegal-access=warn to enable warnings of further illegal reflective access operations
+WARNING: All illegal access operations will be denied in a future release
+2026-05-05 12:02:05	Starting to launch local task to process map join;	maximum memory = 268435456
+2026-05-05 12:02:05	Dump the side-table for tag: 1 with group count: 1738 into file: file:/var/folders/k0/__zyx3fx31ngwx2_l25yzwdc0000gn/T/diego/c1317e15-b55b-4a88-83ed-22b2676f1661/hive_2026-05-05_12-01-16_403_3478595922621252842-1/-local-10006/HashTable-Stage-5/MapJoin-mapfile01--.hashtable
+2026-05-05 12:02:05	Uploaded 1 File to: file:/var/folders/k0/__zyx3fx31ngwx2_l25yzwdc0000gn/T/diego/c1317e15-b55b-4a88-83ed-22b2676f1661/hive_2026-05-05_12-01-16_403_3478595922621252842-1/-local-10006/HashTable-Stage-5/MapJoin-mapfile01--.hashtable (98151 bytes)
+2026-05-05 12:02:05	End of local task; Time Taken: 0.598 sec.
+Execution completed successfully
+MapredLocal task succeeded
+Launching Job 4 out of 5
+Number of reduce tasks is set to 0 since there's no reduce operator
+Starting Job = job_1777897499430_0135, Tracking URL = http://localhost:8088/proxy/application_1777897499430_0135/
+Kill Command = /Users/diego/hadoop-3.4.1/bin/hadoop job  -kill job_1777897499430_0135
+Hadoop job information for Stage-5: number of mappers: 1; number of reducers: 0
+2026-05-05 12:02:13,245 Stage-5 map = 0%,  reduce = 0%
+2026-05-05 12:02:17,391 Stage-5 map = 100%,  reduce = 0%
+Ended Job = job_1777897499430_0135
+Moving data to directory hdfs://localhost:9000/user/hive/warehouse/flights.db/results_airline_stats
+MapReduce Jobs Launched: 
+Stage-Stage-1: Map: 3  Reduce: 3   HDFS Read: 686560201 HDFS Write: 1103664 SUCCESS
+Stage-Stage-4: Map: 3  Reduce: 3   HDFS Read: 686547634 HDFS Write: 95966 SUCCESS
+Stage-Stage-5: Map: 1   HDFS Read: 1110556 HDFS Write: 1159079 SUCCESS
+Total MapReduce CPU Time Spent: 0 msec
+OK
+Time taken: 62.358 seconds
+WARNING: Hive-on-MR is deprecated in Hive 2 and may not be available in the future versions. Consider using a different execution engine (i.e. spark, tez) or using Hive 1.X releases.
+Query ID = diego_20260505120218_1b3c16a9-69c6-4e65-a27c-c0fada7d69a5
+Total jobs = 1
+Launching Job 1 out of 1
+Number of reduce tasks determined at compile time: 1
+In order to change the average load for a reducer (in bytes):
+  set hive.exec.reducers.bytes.per.reducer=<number>
+In order to limit the maximum number of reducers:
+  set hive.exec.reducers.max=<number>
+In order to set a constant number of reducers:
+  set mapreduce.job.reduces=<number>
+Starting Job = job_1777897499430_0136, Tracking URL = http://localhost:8088/proxy/application_1777897499430_0136/
+Kill Command = /Users/diego/hadoop-3.4.1/bin/hadoop job  -kill job_1777897499430_0136
+Hadoop job information for Stage-1: number of mappers: 1; number of reducers: 1
+2026-05-05 12:02:27,912 Stage-1 map = 0%,  reduce = 0%
+2026-05-05 12:02:32,052 Stage-1 map = 100%,  reduce = 0%
+2026-05-05 12:02:36,203 Stage-1 map = 100%,  reduce = 100%
+Ended Job = job_1777897499430_0136
+MapReduce Jobs Launched: 
+Stage-Stage-1: Map: 1  Reduce: 1   HDFS Read: 1170884 HDFS Write: 842 SUCCESS
+Total MapReduce CPU Time Spent: 0 msec
+OK
+9E	ABE	1	159	-44.0	438.0	18.99	0.0	["1","2","3","4","5","6","7","8","9","12","11","10"]
+9E	ABE	2	136	-42.0	113.0	-13.9	0.0147	["1","2","3","4","5","6","7","8","9","12","11","10"]
+9E	ABE	3	162	-47.0	309.0	-15.91	0.0	["1","2","3","4","5","6","7","8","9","12","11","10"]
+9E	ABE	4	131	-44.0	438.0	3.08	0.0	["1","2","3","4","5","6","7","8","9","12","11","10"]
+9E	ABE	5	157	-39.0	182.0	1.83	0.0064	["1","2","3","4","5","6","7","8","9","12","11","10"]
+9E	ABE	6	171	-29.0	169.0	-2.04	0.0058	["1","2","3","4","5","6","7","8","9","12","11","10"]
+9E	ABE	7	167	-33.0	245.0	13.01	0.0359	["1","2","3","4","5","6","7","8","9","12","11","10"]
+9E	ABE	8	147	-31.0	348.0	-5.01	0.0136	["1","2","3","4","5","6","7","8","9","12","11","10"]
+9E	ABE	9	154	-33.0	144.0	-9.95	0.0	["1","2","3","4","5","6","7","8","9","12","11","10"]
+9E	ABE	10	145	-34.0	575.0	-0.74	0.0	["1","2","3","4","5","6","7","8","9","12","11","10"]
+Time taken: 18.528 seconds, Fetched: 10 row(s)

@@ -162,13 +162,20 @@ causes_out = causes_avg.map(
 )
 causes_out.coalesce(1).saveAsTextFile(f"{OUTPUT_PATH}/delay_causes_raw")
 
+HEADERS_SPARK_CORE_2 = {
+    "output_delay_report.csv": "origin|month|delay_band|num_flights|avg_dep_delay|avg_arr_delay",
+    "output_delay_causes.csv": "origin|month|cause|avg_minutes|rank_pos"
+}
 for folder, outfile in [
     ("delay_report_raw", "output_delay_report.csv"),
     ("delay_causes_raw", "output_delay_causes.csv")
 ]:
     parts = glob.glob(f"{OUTPUT_PATH}/{folder}/part-*")
     if parts:
-        shutil.copy(parts[0], f"{OUTPUT_PATH}/{outfile}")
+        with open(f"{OUTPUT_PATH}/{outfile}", "w") as fout:
+            fout.write(HEADERS_SPARK_CORE_2[outfile] + "\n")
+            with open(parts[0], "r") as fin:
+                shutil.copyfileobj(fin, fout)
 
 elapsed = round(time.time() - start, 2)
 print(f"\nTempo di esecuzione: {elapsed}s")
