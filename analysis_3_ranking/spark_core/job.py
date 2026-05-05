@@ -4,17 +4,27 @@ Analisi 3.3 — Ranking coppie compagnia-aeroporto
 Tecnologia: Spark Core 3.5.8 (RDD API)
 """
 import os
+import sys
 import glob
 import shutil
 import time
 from pathlib import Path
 from pyspark import SparkContext, SparkConf
 
+
 # ─── Paths ────────────────────────────────────────────────────────────────────
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
-INPUT_PATH   = str(PROJECT_ROOT / "data" / "cleaned" / "flight_data_2024_cleaned.csv")
+INPUT_PATH   = sys.argv[1] if len(sys.argv) > 1 else str(PROJECT_ROOT / "data" / "cleaned" / "flight_data_2024_cleaned.csv")
 OUTPUT_PATH  = str(PROJECT_ROOT / "results" / "analysis_3" / "spark_core")
 os.makedirs(OUTPUT_PATH, exist_ok=True)
+
+
+# ─── Pulizia output precedente ────────────────────────────────────────────────
+ranking_raw = os.path.join(OUTPUT_PATH, "ranking_raw")
+if os.path.exists(ranking_raw):
+    shutil.rmtree(ranking_raw)
+    print(f"Rimossa directory precedente: {ranking_raw}")
+
 
 # ─── SparkContext ─────────────────────────────────────────────────────────────
 conf = SparkConf() \
@@ -30,17 +40,13 @@ print(f"Input: {INPUT_PATH}")
 
 start = time.time()
 
+
 # ─── 1. Caricamento e parsing ─────────────────────────────────────────────────
 raw    = sc.textFile(INPUT_PATH)
 header = raw.first()
 
+
 def parse_line(line):
-    """
-    Colonne CSV cleaned:
-    0:fl_date, 1:year, 2:month, 3:op_unique_carrier,
-    4:origin, 5:dest, 6:dep_delay, 7:arr_delay,
-    8:cancelled, 9:cancellation_code, 10:carrier_delay, ...
-    """
     fields = line.split(",")
     if len(fields) < 9:
         return None
@@ -56,6 +62,7 @@ def parse_line(line):
     except (ValueError, IndexError):
         return None
 
+
 records = raw \
     .filter(lambda line: line != header) \
     .map(parse_line) \
@@ -63,27 +70,26 @@ records = raw \
 
 records.cache()
 
+
 # ─── 2. Statistiche per (origin, carrier) ────────────────────────────────────
-# key: (origin, carrier) → (dep_sum, arr_sum, canc_sum, count)
 carrier_stats = records \
     .map(lambda r: ((r[0], r[1]), (r[2], r[3], r[4], 1))) \
     .reduceByKey(lambda a, b: (a[0]+b[0], a[1]+b[1], a[2]+b[2], a[3]+b[3]))
 
+
 # ─── 3. Media globale dep_delay per aeroporto ────────────────────────────────
-# key: origin → (dep_sum, count)
 airport_avg = records \
     .map(lambda r: (r[0], (r[2], 1))) \
     .reduceByKey(lambda a, b: (a[0]+b[0], a[1]+b[1])) \
     .mapValues(lambda v: round(v[0] / v[1], 4))
 
+
 # ─── 4. Join: carrier_stats con airport_avg ───────────────────────────────────
-# Rikey carrier_stats su origin per il join
 carrier_by_origin = carrier_stats \
     .map(lambda kv: (kv[0][0], (kv[0][1], kv[1])))
-# → (origin, (carrier, (dep_sum, arr_sum, canc_sum, count)))
 
 joined = carrier_by_origin.join(airport_avg)
-# → (origin, ((carrier, (dep_sum, arr_sum, canc_sum, count)), avg_dep_airport))
+
 
 def compute_row(kv):
     origin, ((carrier, (dep_sum, arr_sum, canc_sum, count)), avg_airport) = kv
@@ -93,19 +99,20 @@ def compute_row(kv):
     dep_diff = round(avg_dep - avg_airport, 4)
     return (origin, carrier, count, avg_dep, avg_arr, cancel_r, avg_airport, dep_diff)
 
+
 rows = joined.map(compute_row)
 
-# ─── 5. Rank per aeroporto (ordinato per avg_dep_delay asc) ──────────────────
-# Raggruppa per origin, ordina, assegna rank
+
+# ─── 5. Rank per aeroporto ────────────────────────────────────────────────────
 by_airport = rows \
     .groupBy(lambda r: r[0]) \
     .flatMap(lambda kv: [
         r + (rank + 1,)
         for rank, r in enumerate(sorted(kv[1], key=lambda x: x[3]))
     ])
-# Ogni riga: (origin, carrier, num_flights, avg_dep, avg_arr, cancel_rate, avg_dep_airport, dep_diff, rank)
 
 result = by_airport.sortBy(lambda x: (x[0], x[8]))
+
 
 # ─── 6. Salvataggio ───────────────────────────────────────────────────────────
 out = result.map(lambda x:
@@ -121,10 +128,12 @@ elapsed = round(time.time() - start, 2)
 print(f"\nTempo di esecuzione: {elapsed}s")
 print(f"Risultati in: {OUTPUT_PATH}")
 
+
 # ─── 7. Prime 10 righe ───────────────────────────────────────────────────────
 print("\n=== Prime 10 righe ===")
 print("origin|carrier|num_flights|avg_dep|avg_arr|cancel_rate|avg_dep_airport|dep_diff|rank")
 for row in result.take(10):
     print("|".join(str(x) for x in row))
+
 
 sc.stop()
