@@ -6,10 +6,12 @@ Sample prodotti di default:
   - 10%  → ~703k  righe
   - 25%  → ~1.76M righe
   - 50%  → ~3.52M righe
+  - 125% → ~8.80M righe  (100% + 25% repliche casuali)
+  - 150% → ~10.6M righe  (100% + 50% repliche casuali)
 
 Uso:
   python3 data_preparation/generate_samples.py
-  python3 data_preparation/generate_samples.py --fractions 0.10 0.25 0.50
+  python3 data_preparation/generate_samples.py --fractions 0.10 0.25 0.50 1.25 1.50
   python3 data_preparation/generate_samples.py --input data/cleaned/flight_data_2024_cleaned.csv
 """
 import argparse
@@ -51,7 +53,17 @@ def generate(input_path: Path, output_dir: Path, fractions: list[float]):
         out  = output_dir / name
 
         t1 = time.time()
-        sample = df.sample(frac=frac, random_state=SEED).reset_index(drop=True)
+
+        if frac <= 1.0:
+            # Campionamento normale senza rimpiazzo
+            sample = df.sample(frac=frac, random_state=SEED).reset_index(drop=True)
+        else:
+            # Frazioni > 100%: dataset completo + repliche casuali della parte eccedente
+            extra_frac = frac - 1.0
+            extra_n    = int(total_rows * extra_frac)
+            extra      = df.sample(n=extra_n, random_state=SEED, replace=True).reset_index(drop=True)
+            sample     = pd.concat([df, extra], ignore_index=True)
+
         sample.to_csv(out, index=False)
 
         rows = len(sample)
@@ -82,13 +94,13 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--fractions", nargs="+", type=float,
-        default=[0.10, 0.25, 0.50],
-        help="Frazioni da generare (default: 0.10 0.25 0.50)"
+        default=[0.10, 0.25, 0.50, 1.25, 1.50],
+        help="Frazioni da generare (default: 0.10 0.25 0.50 1.25 1.50)"
     )
     args = parser.parse_args()
 
     generate(
-        input_path = Path(args.input),
-        output_dir = Path(args.output_dir),
-        fractions  = args.fractions
+        input_path=Path(args.input),
+        output_dir=Path(args.output_dir),
+        fractions=args.fractions,
     )

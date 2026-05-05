@@ -1,17 +1,5 @@
 #!/usr/bin/env bash
 # ─── Benchmark completo: tutte le analisi × tutte le tecnologie × tutti i sample ─
-# Salva i risultati in benchmarks/results_local.csv tramite benchmark_tracker.py
-#
-# Uso:
-#   chmod +x benchmarks/run_benchmarks.sh
-#   ./benchmarks/run_benchmarks.sh
-#
-# Per eseguire solo una analisi:
-#   ANALYSES="3.1" ./benchmarks/run_benchmarks.sh
-#
-# Per eseguire solo alcuni sample:
-#   SAMPLES="010pct 100pct" ./benchmarks/run_benchmarks.sh
-
 set -e
 
 # ─── Configurazione ───────────────────────────────────────────────────────────
@@ -19,16 +7,22 @@ TRACKER="python3 benchmarks/benchmark_tracker.py"
 SAMPLES_DIR="data/samples"
 CLEANED="data/cleaned/flight_data_2024_cleaned.csv"
 
-# Sample da testare (modifica qui per aggiungerne/rimuoverne)
-SAMPLES_PCT=("010pct" "025pct" "050pct")
+# Sample da testare — aggiunti 125pct e 150pct
+SAMPLES_PCT=("010pct" "025pct" "050pct" "125pct" "150pct")
 
-# Analisi e relative tecnologie
+# Frazioni corrispondenti per la generazione automatica
+declare -A SAMPLE_FRACS
+SAMPLE_FRACS["010pct"]="0.10"
+SAMPLE_FRACS["025pct"]="0.25"
+SAMPLE_FRACS["050pct"]="0.50"
+SAMPLE_FRACS["125pct"]="1.25"
+SAMPLE_FRACS["150pct"]="1.50"
+
 declare -A TECHS
 TECHS["3.1"]="mapreduce hive spark_sql"
 TECHS["3.2"]="hive spark_core spark_sql"
 TECHS["3.3"]="mapreduce spark_core spark_sql"
 
-# Script da eseguire per ogni (analisi, tecnologia)
 declare -A SCRIPTS
 SCRIPTS["3.1:mapreduce"]="./analysis_1_airline_stats/mapreduce/run.sh"
 SCRIPTS["3.1:hive"]="./analysis_1_airline_stats/hive/run.sh"
@@ -40,7 +34,6 @@ SCRIPTS["3.3:mapreduce"]="./analysis_3_ranking/mapreduce/run.sh"
 SCRIPTS["3.3:spark_core"]="./analysis_3_ranking/spark_core/run.sh"
 SCRIPTS["3.3:spark_sql"]="./analysis_3_ranking/spark_sql/run.sh"
 
-# Analisi da eseguire (override con env var ANALYSES)
 ANALYSES=${ANALYSES:-"3.1 3.2 3.3"}
 
 # ─── Verifica prerequisiti ────────────────────────────────────────────────────
@@ -59,7 +52,7 @@ for pct in "${SAMPLES_PCT[@]}"; do
     if [ ! -f "$sample_file" ]; then
         echo "⚠️  Sample ${pct} non trovato, lo genero..."
         python3 data_preparation/generate_samples.py \
-            --fractions $(echo $pct | sed 's/pct//' | awk '{printf "%.2f", $1/100}')
+            --fractions "${SAMPLE_FRACS[$pct]}"
     fi
 done
 
@@ -95,8 +88,6 @@ for analysis in $ANALYSES; do
             echo "▶  Analisi ${analysis} | ${tech} | sample ${pct}"
             echo "   Input: $input"
 
-            # Sovrascrive INPUT_PATH per i job Spark/Hive che lo leggono
-            # tramite variabile d'ambiente (aggiunta nei run.sh)
             export BENCHMARK_INPUT="$input"
 
             $TRACKER \
@@ -109,7 +100,7 @@ for analysis in $ANALYSES; do
             || { FAILED_JOBS=$((FAILED_JOBS + 1)); TOTAL_JOBS=$((TOTAL_JOBS + 1)); }
         done
 
-        # ── Esegui sul dataset completo cleaned ───────────────────────────────
+        # ── Esegui sul dataset completo cleaned (100%) ────────────────────────
         echo ""
         echo "▶  Analisi ${analysis} | ${tech} | 100% (cleaned)"
         echo "   Input: $CLEANED"
