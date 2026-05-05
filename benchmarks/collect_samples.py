@@ -6,9 +6,9 @@ results/<analisi>/<tecnologia>/sample_top10.csv
 import os, glob
 
 HEADERS = {
-    "analysis_1": "op_unique_carrier|origin|dest|num_flights|avg_dep_delay|avg_arr_delay|cancel_rate",
-    "analysis_2_delay_report": "origin|month|band|num_flights|avg_dep_delay|avg_arr_delay",
-    "analysis_2_delay_causes": "origin|month|cause|avg_minutes|rank",
+    "analysis_1": "carrier|origin|month|num_flights|min_arr_delay|max_arr_delay|avg_arr_delay|cancel_rate|months_active",
+    "analysis_2_delay_report": "origin|month|delay_band|num_flights|avg_dep_delay|avg_arr_delay",
+    "analysis_2_delay_causes": "origin|month|cause|avg_minutes|rank_pos",
     "analysis_3": "origin|carrier|num_flights|avg_dep_delay|avg_arr_delay|cancel_rate|avg_dep_airport|dep_diff|rank",
 }
 
