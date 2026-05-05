@@ -1,4 +1,4 @@
-origin|month|cause|avg_minutes|rank
+origin|month|cause|avg_minutes|rank_pos
 ABE|1|weather_delay|159.125|1
 ABE|1|carrier_delay|97.9375|2
 ABE|1|late_aircraft_delay|94.375|3

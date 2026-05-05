@@ -2,9 +2,8 @@
 # ─── Analisi 3.3 — MapReduce (Hadoop Streaming) ──────────────────────────────
 set -e
 
-# Usa il sample passato dal benchmark runner, altrimenti il cleaned completo
 INPUT="${BENCHMARK_INPUT:-data/cleaned/flight_data_2024_cleaned.csv}"
-INPUT_FILENAME=$(basename "$INPUT")   # ← nome file dinamico
+INPUT_FILENAME=$(basename "$INPUT")
 
 HDFS_INPUT="/user/mapreduce/analysis_3/input"
 HDFS_OUTPUT="/user/mapreduce/analysis_3/output"
@@ -37,8 +36,14 @@ hadoop jar "$STREAMING_JAR" \
     -file    "$REDUCER"
 
 echo "Download risultati..."
-echo "origin|carrier|num_flights|avg_dep|avg_arr|cancel_rate|avg_dep_airport|dep_diff|rank" > "$OUTPUT_LOCAL/output.csv"
-hadoop fs -cat "$HDFS_OUTPUT/part-*" >> "$OUTPUT_LOCAL/output.csv"
+rm -f "$OUTPUT_LOCAL/output.csv"
+
+# Header
+echo "origin|carrier|num_flights|avg_dep_delay|avg_arr_delay|cancel_rate|avg_dep_airport|dep_diff|rank" \
+    > "$OUTPUT_LOCAL/output.csv"
+
+# Converti tab → pipe e appendi i dati
+hadoop fs -cat "$HDFS_OUTPUT/part-*" | sed 's/\t/|/g' >> "$OUTPUT_LOCAL/output.csv"
 
 END=$(date +%s)
 echo "End: $(date)"
@@ -46,5 +51,4 @@ echo "Tempo di esecuzione: $((END - START))s"
 
 echo ""
 echo "=== Prime 10 righe ==="
-echo "origin|carrier|num_flights|avg_dep|avg_arr|cancel_rate|avg_dep_airport|dep_diff|rank"
 head -10 "$OUTPUT_LOCAL/output.csv"
