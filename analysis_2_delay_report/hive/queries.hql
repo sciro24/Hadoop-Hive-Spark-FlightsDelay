@@ -1,7 +1,7 @@
 -- ─── Analisi 3.2 — Report Ritardi per Aeroporto e Periodo Temporale ──────────
 USE flights;
 
--- ─── 1. Tabella risultati fasce di ritardo ────────────────────────────────────
+-- ─── 1. Fasce di ritardo ──────────────────────────────────────────────────────
 DROP TABLE IF EXISTS results_delay_report;
 
 CREATE TABLE results_delay_report AS
@@ -10,8 +10,11 @@ SELECT
     month,
     delay_band,
     COUNT(*)                                        AS num_flights,
-    ROUND(AVG(dep_delay), 2)                        AS avg_dep_delay,
-    ROUND(AVG(arr_delay), 2)                        AS avg_arr_delay
+    -- FIX: NULL esplicito per unknown invece di AVG su NULL implicito
+    CASE WHEN delay_band = 'unknown' THEN NULL
+         ELSE ROUND(AVG(dep_delay), 2) END          AS avg_dep_delay,
+    CASE WHEN delay_band = 'unknown' THEN NULL
+         ELSE ROUND(AVG(arr_delay), 2) END          AS avg_arr_delay
 FROM (
     SELECT
         origin,
@@ -31,8 +34,7 @@ FROM (
 ) t
 GROUP BY origin, month, delay_band;
 
--- ─── 2. Tabella top 3 cause di ritardo per aeroporto e mese ──────────────────
--- ─── 2. Tabella top 3 cause di ritardo per aeroporto e mese ──────────────────
+-- ─── 2. Top 3 cause di ritardo ────────────────────────────────────────────────
 DROP TABLE IF EXISTS results_delay_causes;
 
 CREATE TABLE results_delay_causes AS
@@ -42,8 +44,9 @@ FROM (
         origin,
         month,
         cause,
-        avg_minutes,
-        RANK() OVER (PARTITION BY origin, month ORDER BY avg_minutes DESC) AS rank_pos
+        -- FIX: ROUND a 4 decimali per allineamento con Spark Core/SQL
+        ROUND(avg_minutes, 4)                                               AS avg_minutes,
+        RANK() OVER (PARTITION BY origin, month ORDER BY avg_minutes DESC)  AS rank_pos
     FROM (
         SELECT origin, month, 'carrier_delay'       AS cause, AVG(carrier_delay)       AS avg_minutes FROM flights_clean WHERE carrier_delay       > 0 GROUP BY origin, month
         UNION ALL
@@ -58,11 +61,6 @@ FROM (
 ) ranked
 WHERE rank_pos <= 3;
 
--- ─── 3. Prime 10 righe risultati ─────────────────────────────────────────────
-SELECT * FROM results_delay_report
-ORDER BY origin, month, delay_band
-LIMIT 10;
-
-SELECT * FROM results_delay_causes
-ORDER BY origin, month, rank_pos
-LIMIT 10;
+-- ─── 3. Preview ───────────────────────────────────────────────────────────────
+SELECT * FROM results_delay_report  ORDER BY origin, month, delay_band LIMIT 10;
+SELECT * FROM results_delay_causes  ORDER BY origin, month, rank_pos   LIMIT 10;

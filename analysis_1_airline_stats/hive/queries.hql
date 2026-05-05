@@ -1,15 +1,9 @@
 -- ─── Analisi 3.1 — Statistiche Compagnie Aeree ───────────────────────────────
--- Tecnologia: Apache Hive 2.3.9
--- Input: dataset pulito caricato come tabella esterna
-
--- ─── 1. Crea database (se non esiste) ────────────────────────────────────────
 CREATE DATABASE IF NOT EXISTS flights;
 USE flights;
 
--- ─── 2. Drop tabella se già esiste ───────────────────────────────────────────
 DROP TABLE IF EXISTS flights_clean;
 
--- ─── 3. Tabella esterna sul CSV pulito ───────────────────────────────────────
 CREATE EXTERNAL TABLE flights_clean (
     fl_date             STRING,
     year                INT,
@@ -33,7 +27,6 @@ STORED AS TEXTFILE
 LOCATION '/user/hive/warehouse/flights_clean'
 TBLPROPERTIES ("skip.header.line.count"="1");
 
--- ─── 4. CTE: statistiche mensili + mesi attivi per (carrier, origin) ─────────
 DROP TABLE IF EXISTS results_airline_stats;
 
 CREATE TABLE results_airline_stats AS
@@ -54,11 +47,11 @@ WITH monthly_stats AS (
     GROUP BY op_unique_carrier, origin, month
 ),
 active_months AS (
-    -- Raggruppa su (carrier, origin) senza month → COLLECT_SET raccoglie tutti i mesi
     SELECT
         op_unique_carrier,
         origin,
-        COLLECT_SET(CAST(month AS STRING))      AS months_active
+        -- FIX: COLLECT_SET su INT → SORT_ARRAY ordina numericamente (1,2,...,12)
+        SORT_ARRAY(COLLECT_SET(month))          AS months_active
     FROM flights_clean
     WHERE op_unique_carrier IS NOT NULL
       AND origin            IS NOT NULL
@@ -79,7 +72,6 @@ JOIN active_months  a
   ON  m.op_unique_carrier = a.op_unique_carrier
   AND m.origin            = a.origin;
 
--- ─── 5. Mostra prime 10 righe ─────────────────────────────────────────────────
 SELECT * FROM results_airline_stats
 ORDER BY carrier, origin, month
 LIMIT 10;
