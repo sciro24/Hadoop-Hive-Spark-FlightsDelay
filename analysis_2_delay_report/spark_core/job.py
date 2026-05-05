@@ -176,6 +176,7 @@ for folder, outfile in [
             fout.write(HEADERS_SPARK_CORE_2[outfile] + "\n")
             with open(parts[0], "r") as fin:
                 shutil.copyfileobj(fin, fout)
+    shutil.rmtree(f"{OUTPUT_PATH}/{folder}", ignore_errors=True)
 
 elapsed = round(time.time() - start, 2)
 print(f"\nTempo di esecuzione: {elapsed}s")

@@ -126,6 +126,7 @@ if parts:
         fout.write("origin|carrier|num_flights|avg_dep|avg_arr|cancel_rate|avg_dep_airport|dep_diff|rank\n")
         with open(parts[0], "r") as fin:
             shutil.copyfileobj(fin, fout)
+shutil.rmtree(f"{OUTPUT_PATH}/ranking_raw", ignore_errors=True)
 
 elapsed = round(time.time() - start, 2)
 print(f"\nTempo di esecuzione: {elapsed}s")

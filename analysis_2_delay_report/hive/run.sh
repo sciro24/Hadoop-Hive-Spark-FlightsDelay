@@ -60,6 +60,9 @@ cat "$OUTPUT_DIR"/delay_report/* >> "$OUTPUT_DIR/output_delay_report.csv" 2>/dev
 echo "origin|month|cause|avg_minutes|rank_pos" > "$OUTPUT_DIR/output_delay_causes.csv"
 cat "$OUTPUT_DIR"/delay_causes/* >> "$OUTPUT_DIR/output_delay_causes.csv" 2>/dev/null || true
 
+echo "Pulizia file temporanei..."
+rm -rf "$OUTPUT_DIR/delay_report" "$OUTPUT_DIR/delay_causes" "$OUTPUT_DIR/hive_log.txt"
+
 END=$(date +%s)
 echo "End: $(date)"
 echo "Tempo di esecuzione: $((END - START))s"

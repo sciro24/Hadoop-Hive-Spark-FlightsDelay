@@ -104,6 +104,7 @@ result.coalesce(1).write.mode("overwrite") \
 parts = glob.glob(f"{OUTPUT_PATH}/ranking_raw/part-*.csv")
 if parts:
     shutil.copy(parts[0], f"{OUTPUT_PATH}/output.csv")
+shutil.rmtree(f"{OUTPUT_PATH}/ranking_raw", ignore_errors=True)
 
 elapsed = round(time.time() - start, 2)
 print(f"\nTempo di esecuzione: {elapsed}s")

@@ -108,6 +108,7 @@ for results, folder, outfile in [
     parts = glob.glob(f"{OUTPUT_PATH}/{folder}/part-*.csv")
     if parts:
         shutil.copy(parts[0], f"{OUTPUT_PATH}/{outfile}")
+    shutil.rmtree(f"{OUTPUT_PATH}/{folder}", ignore_errors=True)
 
 elapsed = round(time.time() - start, 2)
 print(f"\nTempo di esecuzione: {elapsed}s")

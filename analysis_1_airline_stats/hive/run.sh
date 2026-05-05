@@ -74,6 +74,9 @@ echo "carrier|origin|month|num_flights|min_arr_delay|max_arr_delay|avg_arr_delay
 cat "$OUTPUT_DIR"/raw/000000_0 >> "$OUTPUT_DIR/output.csv" 2>/dev/null || \
 cat "$OUTPUT_DIR"/raw/* >> "$OUTPUT_DIR/output.csv"
 
+echo "Pulizia file temporanei..."
+rm -rf "$OUTPUT_DIR/raw" "$OUTPUT_DIR/hive_log.txt"
+
 END=$(date +%s)
 echo "End: $(date)"
 echo "Tempo di esecuzione: $((END - START))s"
