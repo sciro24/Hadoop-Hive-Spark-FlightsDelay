@@ -19,10 +19,11 @@ FROM (
         dep_delay,
         arr_delay,
         CASE
+            WHEN dep_delay IS NULL           THEN 'unknown'
             WHEN dep_delay < 15              THEN 'low'
             WHEN dep_delay BETWEEN 15 AND 60 THEN 'medium'
             WHEN dep_delay > 60              THEN 'high'
-            ELSE 'low'
+            ELSE 'unknown'
         END AS delay_band
     FROM flights_clean
     WHERE origin IS NOT NULL

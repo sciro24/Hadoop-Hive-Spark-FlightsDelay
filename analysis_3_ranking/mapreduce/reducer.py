@@ -22,7 +22,7 @@ for line in sys.stdin:
     if len(parts) != 7:
         continue
 
-    tipo, origin, key, dep, arr, canc, cnt = parts
+    origin, tipo, key, dep, arr, canc, cnt = parts
     try:
         dep  = float(dep)
         arr  = float(arr)

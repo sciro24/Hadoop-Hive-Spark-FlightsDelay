@@ -86,7 +86,7 @@ records.cache()
 # ─── 2. Fasce di ritardo ──────────────────────────────────────────────────────
 def assign_band(dep_delay):
     if dep_delay is None:
-        return "low"
+        return "unknown"
     if dep_delay < 15:
         return "low"
     elif dep_delay <= 60:

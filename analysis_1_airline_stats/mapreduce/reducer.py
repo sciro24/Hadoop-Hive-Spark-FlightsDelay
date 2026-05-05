@@ -14,6 +14,7 @@ from collections import defaultdict
 aggregated = defaultdict(lambda: defaultdict(lambda: {
     "flights":   0,
     "sum_arr":   0.0,
+    "count_arr": 0,
     "min_arr":   float('inf'),
     "max_arr":   float('-inf'),
     "cancelled": 0,
@@ -44,6 +45,7 @@ for line in sys.stdin:
         try:
             val = float(arr_delay_str)
             rec["sum_arr"]  += val
+            rec["count_arr"] += 1
             rec["has_delay"] = True
             if val < rec["min_arr"]: rec["min_arr"] = val
             if val > rec["max_arr"]: rec["max_arr"] = val
@@ -68,7 +70,7 @@ try:
                 # Per avg preciso aggiungiamo count_delay
                 min_arr = round(rec["min_arr"], 2)
                 max_arr = round(rec["max_arr"], 2)
-                avg_arr = round(rec["sum_arr"] / n, 2)
+                avg_arr = round(rec["sum_arr"] / rec["count_arr"], 2)
             else:
                 min_arr = "NULL"
                 max_arr = "NULL"

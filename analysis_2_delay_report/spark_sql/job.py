@@ -42,10 +42,11 @@ query_bands = """
         origin,
         month,
         CASE
+            WHEN dep_delay IS NULL           THEN 'unknown'
             WHEN dep_delay < 15              THEN 'low'
             WHEN dep_delay BETWEEN 15 AND 60 THEN 'medium'
             WHEN dep_delay > 60              THEN 'high'
-            ELSE 'low'
+            ELSE 'unknown'
         END                             AS delay_band,
         COUNT(*)                        AS num_flights,
         ROUND(AVG(dep_delay), 2)        AS avg_dep_delay,
@@ -55,10 +56,11 @@ query_bands = """
       AND month  IS NOT NULL
     GROUP BY origin, month,
         CASE
+            WHEN dep_delay IS NULL           THEN 'unknown'
             WHEN dep_delay < 15              THEN 'low'
             WHEN dep_delay BETWEEN 15 AND 60 THEN 'medium'
             WHEN dep_delay > 60              THEN 'high'
-            ELSE 'low'
+            ELSE 'unknown'
         END
     ORDER BY origin, month, delay_band
 """

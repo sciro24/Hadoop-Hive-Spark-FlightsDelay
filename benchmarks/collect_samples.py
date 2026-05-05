@@ -53,8 +53,12 @@ for src_folder, header_key, pattern, analysis_dest, tech_dest in JOBS:
         header = HEADERS.get(header_key, "")
         if header:
             fout.write(header + "\n")
-        lines = [l for l in fin if l.strip()][:10]
-        fout.writelines(lines)
+        
+        lines = [l for l in fin if l.strip()]
+        if lines and header and lines[0].startswith(header.split("|")[0]):
+            lines = lines[1:]
+            
+        fout.writelines(lines[:10])
 
     print(f"[OK] {out_path}  ({len(lines)} righe)")
     found.append(out_path)
