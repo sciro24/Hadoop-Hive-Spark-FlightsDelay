@@ -55,14 +55,15 @@ for src_folder, header_key, pattern, analysis_dest, tech_dest in JOBS:
         if header:
             fout.write(header + "\n")
 
-        lines = [l for l in fin if l.strip()]
+        # Leggi e pulisci ogni riga (rimuove \n e \t finali che MapReduce spesso lascia)
+        lines = [l.strip() for l in fin if l.strip()]
 
         # Rimuovi TUTTE le righe di header iniziali (vecchie o corrette)
         while lines and lines[0].split("|")[0].split("\t")[0].strip() in KNOWN_HEADERS:
             lines = lines[1:]
 
-        # Normalizza separatore: converti tab → pipe
-        normalized = [l.replace("\t", "|") for l in lines]
+        # Normalizza separatore: converti tab → pipe e riaggiungi newline
+        normalized = [l.replace("\t", "|") + "\n" for l in lines]
 
         fout.writelines(normalized[:10])
 
