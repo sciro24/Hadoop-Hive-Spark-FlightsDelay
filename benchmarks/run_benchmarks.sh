@@ -128,6 +128,11 @@ for analysis in $ANALYSES; do
     done
 done
 
+# ─── Raccolta prime 10 righe per ogni job ─────────────────────────────────────
+echo ""
+echo "Raccolta sample output (prime 10 righe)..."
+python3 benchmarks/collect_samples.py
+
 # ─── Riepilogo finale ─────────────────────────────────────────────────────────
 END_ALL=$(date +%s)
 ELAPSED_ALL=$((END_ALL - START_ALL))
