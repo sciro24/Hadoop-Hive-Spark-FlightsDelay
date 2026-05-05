@@ -33,28 +33,51 @@ STORED AS TEXTFILE
 LOCATION '/user/hive/warehouse/flights_clean'
 TBLPROPERTIES ("skip.header.line.count"="1");
 
--- ─── 4. Tabella risultati ─────────────────────────────────────────────────────
+-- ─── 4. CTE: statistiche mensili + mesi attivi per (carrier, origin) ─────────
 DROP TABLE IF EXISTS results_airline_stats;
 
 CREATE TABLE results_airline_stats AS
+WITH monthly_stats AS (
+    SELECT
+        op_unique_carrier,
+        origin,
+        month,
+        COUNT(*)                                AS num_flights,
+        ROUND(MIN(arr_delay),  2)               AS min_arr_delay,
+        ROUND(MAX(arr_delay),  2)               AS max_arr_delay,
+        ROUND(AVG(arr_delay),  2)               AS avg_arr_delay,
+        ROUND(SUM(cancelled) / COUNT(*), 4)     AS cancel_rate
+    FROM flights_clean
+    WHERE op_unique_carrier IS NOT NULL
+      AND origin            IS NOT NULL
+      AND month             IS NOT NULL
+    GROUP BY op_unique_carrier, origin, month
+),
+active_months AS (
+    -- Raggruppa su (carrier, origin) senza month → COLLECT_SET raccoglie tutti i mesi
+    SELECT
+        op_unique_carrier,
+        origin,
+        COLLECT_SET(CAST(month AS STRING))      AS months_active
+    FROM flights_clean
+    WHERE op_unique_carrier IS NOT NULL
+      AND origin            IS NOT NULL
+    GROUP BY op_unique_carrier, origin
+)
 SELECT
-    op_unique_carrier                           AS carrier,
-    origin,
-    month,
-    COUNT(*)                                    AS num_flights,
-    ROUND(MIN(arr_delay), 2)                    AS min_arr_delay,
-    ROUND(MAX(arr_delay), 2)                    AS max_arr_delay,
-    ROUND(AVG(arr_delay), 2)                    AS avg_arr_delay,
-    ROUND(SUM(cancelled) / COUNT(*), 4)         AS cancel_rate,
-    COLLECT_SET(CAST(month AS STRING))          AS active_months
-FROM flights_clean
-WHERE op_unique_carrier IS NOT NULL
-  AND origin            IS NOT NULL
-  AND month             IS NOT NULL
-GROUP BY
-    op_unique_carrier,
-    origin,
-    month;
+    m.op_unique_carrier     AS carrier,
+    m.origin,
+    m.month,
+    m.num_flights,
+    m.min_arr_delay,
+    m.max_arr_delay,
+    m.avg_arr_delay,
+    m.cancel_rate,
+    a.months_active
+FROM monthly_stats  m
+JOIN active_months  a
+  ON  m.op_unique_carrier = a.op_unique_carrier
+  AND m.origin            = a.origin;
 
 -- ─── 5. Mostra prime 10 righe ─────────────────────────────────────────────────
 SELECT * FROM results_airline_stats

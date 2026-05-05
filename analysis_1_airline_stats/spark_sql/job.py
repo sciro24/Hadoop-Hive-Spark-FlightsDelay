@@ -5,13 +5,16 @@ Tecnologia: Spark SQL 3.5.8
 """
 import os
 import sys
+import glob
+import shutil
 import time
 from pathlib import Path
 from pyspark.sql import SparkSession
 
+
 # ─── Paths ────────────────────────────────────────────────────────────────────
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
-INPUT_PATH   = str(PROJECT_ROOT / "data" / "cleaned" / "flight_data_2024_cleaned.csv")
+INPUT_PATH   = sys.argv[1] if len(sys.argv) > 1 else str(PROJECT_ROOT / "data" / "cleaned" / "flight_data_2024_cleaned.csv")
 OUTPUT_PATH  = str(PROJECT_ROOT / "results" / "analysis_1" / "spark_sql")
 
 os.makedirs(OUTPUT_PATH, exist_ok=True)
@@ -35,46 +38,20 @@ start = time.time()
 df = spark.read.csv(INPUT_PATH, header=True, inferSchema=True)
 print(f"Righe caricate: {df.count():,}")
 
-# ─── Registra vista temporanea ────────────────────────────────────────────────
 df.createOrReplaceTempView("flights")
 
-# ─── Query Analisi 3.1 ────────────────────────────────────────────────────────
-# Per ogni (compagnia, aeroporto di partenza, mese):
-# - numero voli
-# - ritardo min/max/medio in arrivo
-# - tasso di cancellazione
-# - lista mesi operativi (collect_set aggregato per carrier+origin)
-
-query_monthly = """
-    SELECT
-        op_unique_carrier                           AS carrier,
-        origin,
-        month,
-        COUNT(*)                                    AS num_flights,
-        ROUND(MIN(arr_delay), 2)                    AS min_arr_delay,
-        ROUND(MAX(arr_delay), 2)                    AS max_arr_delay,
-        ROUND(AVG(arr_delay), 2)                    AS avg_arr_delay,
-        ROUND(SUM(CAST(cancelled AS DOUBLE)) / COUNT(*), 4) AS cancel_rate
-    FROM flights
-    WHERE op_unique_carrier IS NOT NULL
-      AND origin IS NOT NULL
-      AND month  IS NOT NULL
-    GROUP BY op_unique_carrier, origin, month
-    ORDER BY carrier, origin, month
-"""
-
-# ─── Query con lista mesi operativi aggregata per (carrier, origin) ───────────
-query_with_months = """
+# ─── Query con mesi attivi (allineata a Hive e MapReduce) ─────────────────────
+query = """
     WITH monthly AS (
         SELECT
-            op_unique_carrier   AS carrier,
+            op_unique_carrier                                       AS carrier,
             origin,
             month,
-            COUNT(*)            AS num_flights,
-            ROUND(MIN(arr_delay), 2)  AS min_arr_delay,
-            ROUND(MAX(arr_delay), 2)  AS max_arr_delay,
-            ROUND(AVG(arr_delay), 2)  AS avg_arr_delay,
-            ROUND(SUM(CAST(cancelled AS DOUBLE)) / COUNT(*), 4) AS cancel_rate
+            COUNT(*)                                                AS num_flights,
+            ROUND(MIN(arr_delay), 2)                                AS min_arr_delay,
+            ROUND(MAX(arr_delay), 2)                                AS max_arr_delay,
+            ROUND(AVG(arr_delay), 2)                                AS avg_arr_delay,
+            ROUND(SUM(CAST(cancelled AS DOUBLE)) / COUNT(*), 4)    AS cancel_rate
         FROM flights
         WHERE op_unique_carrier IS NOT NULL
           AND origin IS NOT NULL
@@ -105,7 +82,7 @@ query_with_months = """
     ORDER BY m.carrier, m.origin, m.month
 """
 
-results = spark.sql(query_with_months)
+results = spark.sql(query)
 
 # ─── Salvataggio ──────────────────────────────────────────────────────────────
 results.coalesce(1).write.mode("overwrite") \
@@ -113,14 +90,11 @@ results.coalesce(1).write.mode("overwrite") \
     .option("delimiter", "|") \
     .csv(OUTPUT_PATH + "/raw")
 
-# Rinomina part file in output.csv
-import glob, shutil
 part_files = glob.glob(f"{OUTPUT_PATH}/raw/part-*.csv")
 if part_files:
     shutil.copy(part_files[0], f"{OUTPUT_PATH}/output.csv")
 
 elapsed = round(time.time() - start, 2)
-
 print(f"\nTempo di esecuzione: {elapsed}s")
 print(f"Risultato: {OUTPUT_PATH}/output.csv")
 

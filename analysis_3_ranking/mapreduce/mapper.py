@@ -2,10 +2,14 @@
 """
 Mapper Analisi 3.3 — Ranking coppie compagnia-aeroporto
 Fase 1: emette due tipi di chiave:
-  - ("carrier", origin, carrier) → (dep_delay, arr_delay, cancelled, 1)
-  - ("airport", origin, "__ALL__") → (dep_delay, arr_delay, 0, 1)
+  - (origin, "carrier", carrier) → (dep_delay, arr_delay, cancelled, 1)
+  - (origin, "airport", "__ALL__") → (dep_delay, arr_delay, 0, 1)
+
+La chiave primaria è `origin` così tutti i record dello stesso aeroporto
+vanno allo stesso Reducer, garantendo il calcolo corretto di dep_diff.
 """
 import sys
+
 
 for line in sys.stdin:
     line = line.strip()
@@ -30,15 +34,14 @@ for line in sys.stdin:
         if not origin or not carrier:
             continue
 
-        dep = float(dep_delay) if dep_delay not in ("", "nan", "NA") else 0.0
-        arr = float(arr_delay) if arr_delay not in ("", "nan", "NA") else 0.0
+        dep  = float(dep_delay) if dep_delay not in ("", "nan", "NA") else 0.0
+        arr  = float(arr_delay) if arr_delay not in ("", "nan", "NA") else 0.0
         canc = float(cancelled) if cancelled not in ("", "nan", "NA") else 0.0
 
-        # Emetti riga per (compagnia, aeroporto)
-        print(f"carrier\t{origin}\t{carrier}\t{dep}\t{arr}\t{canc}\t1")
-
-        # Emetti riga per media globale aeroporto
-        print(f"airport\t{origin}\t__ALL__\t{dep}\t{arr}\t0\t1")
+        # origin è la prima colonna → Hadoop Streaming raggruppa per origin
+        # tutti i record dello stesso aeroporto vanno allo stesso Reducer
+        print(f"{origin}\tcarrier\t{carrier}\t{dep}\t{arr}\t{canc}\t1")
+        print(f"{origin}\tairport\t__ALL__\t{dep}\t{arr}\t0\t1")
 
     except (ValueError, IndexError):
         continue
