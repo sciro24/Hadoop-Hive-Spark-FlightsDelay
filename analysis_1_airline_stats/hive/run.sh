@@ -2,7 +2,6 @@
 # ─── Analisi 3.1 — Hive ──────────────────────────────────────────────────────
 set -e
 
-# Usa il sample passato dal benchmark runner, altrimenti il cleaned completo
 INPUT="${BENCHMARK_INPUT:-data/cleaned/flight_data_2024_cleaned.csv}"
 INPUT_FILENAME=$(basename "$INPUT")
 
@@ -17,13 +16,12 @@ START=$(date +%s)
 
 mkdir -p "$OUTPUT_DIR"
 
-# ─── Carica CSV su HDFS ──────────────────────────────────────────────────────
+# ─── Carica CSV su HDFS ───────────────────────────────────────────────────────
 echo "Caricamento CSV su HDFS..."
 hadoop fs -mkdir -p "$HDFS_DIR"
 hadoop fs -put -f "$INPUT" "$HDFS_DIR/"
 
-# ─── Ricrea la tabella Hive puntando al file corretto ─────────────────────────
-# Necessario perché ogni sample ha un nome diverso
+# ─── Ricrea la tabella Hive ───────────────────────────────────────────────────
 hive -e "
 USE flights;
 DROP TABLE IF EXISTS flights_clean;
@@ -47,16 +45,30 @@ hive -f "$HQL" 2>&1 | tee "$OUTPUT_DIR/hive_log.txt"
 
 # ─── Esporta risultato ────────────────────────────────────────────────────────
 echo "Esportazione risultati..."
-hive -e "USE flights; INSERT OVERWRITE LOCAL DIRECTORY '$OUTPUT_DIR/raw'
+hive -e "
+USE flights;
+INSERT OVERWRITE LOCAL DIRECTORY '$OUTPUT_DIR/raw'
 ROW FORMAT DELIMITED FIELDS TERMINATED BY '|'
-SELECT carrier, origin, month, num_flights,
-       min_arr_delay, max_arr_delay, avg_arr_delay,
-       cancel_rate, active_months
+SELECT
+    carrier,
+    origin,
+    month,
+    num_flights,
+    min_arr_delay,
+    max_arr_delay,
+    avg_arr_delay,
+    cancel_rate,
+    months_active
 FROM results_airline_stats
-ORDER BY carrier, origin, month;" 2>/dev/null
+ORDER BY carrier, origin, month;
+" 2>/dev/null
 
-cat "$OUTPUT_DIR"/raw/000000_0 > "$OUTPUT_DIR/output.csv" 2>/dev/null || \
-cat "$OUTPUT_DIR"/raw/* > "$OUTPUT_DIR/output.csv"
+# Aggiungi header e unisci i part file
+echo "carrier|origin|month|num_flights|min_arr_delay|max_arr_delay|avg_arr_delay|cancel_rate|months_active" \
+    > "$OUTPUT_DIR/output.csv"
+
+cat "$OUTPUT_DIR"/raw/000000_0 >> "$OUTPUT_DIR/output.csv" 2>/dev/null || \
+cat "$OUTPUT_DIR"/raw/* >> "$OUTPUT_DIR/output.csv"
 
 END=$(date +%s)
 echo "End: $(date)"
