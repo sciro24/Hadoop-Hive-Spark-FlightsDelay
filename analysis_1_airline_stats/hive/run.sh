@@ -72,15 +72,22 @@ FROM results_airline_stats
 ORDER BY carrier, origin, month;
 "
 
-# Header + dati
-echo "carrier|origin|month|num_flights|min_arr_delay|max_arr_delay|avg_arr_delay|cancel_rate|months_active" \
-    > "$OUTPUT_DIR/output.csv"
+# ─── Post-processing ─────────────────────────────────────────────────────────
+if [[ "$INPUT" == *"cleaned"* ]]; then
+    echo "Dataset completo rilevato. Aggiornamento risultati finali..."
+    # Header + dati
+    echo "carrier|origin|month|num_flights|min_arr_delay|max_arr_delay|avg_arr_delay|cancel_rate|months_active" \
+        > "$OUTPUT_DIR/output.csv"
 
-cat "$RAW_DIR"/000000_0 >> "$OUTPUT_DIR/output.csv" 2>/dev/null || \
-cat "$RAW_DIR"/* >> "$OUTPUT_DIR/output.csv"
+    cat "$RAW_DIR"/000000_0 >> "$OUTPUT_DIR/output.csv" 2>/dev/null || \
+    cat "$RAW_DIR"/* >> "$OUTPUT_DIR/output.csv"
+else
+    echo "Dataset sample rilevato ($INPUT_FILENAME). Salto aggiornamento output.csv."
+fi
 
 echo "Pulizia file temporanei..."
 rm -rf "$RAW_DIR" "$OUTPUT_DIR/hive_log.txt"
+rm -f "$OUTPUT_DIR/".*.crc
 
 END=$(date +%s)
 echo "End: $(date)"

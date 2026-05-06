@@ -35,15 +35,17 @@ hadoop jar "$STREAMING_JAR" \
     -file    "$MAPPER" \
     -file    "$REDUCER"
 
-echo "Download risultati..."
-rm -f "$OUTPUT_LOCAL/output.csv"
-
-# Header
-echo "origin|carrier|num_flights|avg_dep_delay|avg_arr_delay|cancel_rate|avg_dep_airport|dep_diff|rank" \
-    > "$OUTPUT_LOCAL/output.csv"
-
-# Converti tab → pipe e appendi i dati
-hadoop fs -cat "$HDFS_OUTPUT/part-*" | sed 's/\t/|/g' >> "$OUTPUT_LOCAL/output.csv"
+# ─── Scarica output da HDFS ──────────────────────────────────────────────────
+if [[ "$INPUT" == *"cleaned"* ]]; then
+    echo "Dataset completo rilevato. Aggiornamento risultati finali..."
+    # Header
+    echo "origin|carrier|num_flights|avg_dep_delay|avg_arr_delay|cancel_rate|avg_dep_airport|dep_diff|rank" \
+        > "$OUTPUT_LOCAL/output.csv"
+    # Converti tab → pipe e appendi i dati
+    hadoop fs -cat "$HDFS_OUTPUT/part-*" | sed 's/\t/|/g' >> "$OUTPUT_LOCAL/output.csv"
+else
+    echo "Dataset sample rilevato ($INPUT_FILENAME). Salto aggiornamento output.csv."
+fi
 
 END=$(date +%s)
 echo "End: $(date)"

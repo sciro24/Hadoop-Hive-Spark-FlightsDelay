@@ -103,14 +103,19 @@ query = """
 results_unified = spark.sql(query)
 
 # ─── Salvataggio ──────────────────────────────────────────────────────────────
-results_unified.coalesce(1).write.mode("overwrite") \
+results_unified.orderBy("origin", "month", "delay_band") \
+    .coalesce(1).write.mode("overwrite") \
     .option("header", "true") \
     .option("delimiter", "|") \
     .csv(f"{OUTPUT_PATH}/temp")
 
 parts = glob.glob(f"{OUTPUT_PATH}/temp/part-*.csv")
-if parts:
+if parts and "cleaned" in INPUT_PATH:
     shutil.copy(parts[0], f"{OUTPUT_PATH}/output.csv")
+    print(f"Dataset completo rilevato. Risultati salvati in {OUTPUT_PATH}/output.csv")
+elif parts:
+    print(f"Dataset sample rilevato. Salto aggiornamento {OUTPUT_PATH}/output.csv")
+
 shutil.rmtree(f"{OUTPUT_PATH}/temp", ignore_errors=True)
 
 elapsed = round(time.time() - start, 2)

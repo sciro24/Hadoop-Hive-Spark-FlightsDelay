@@ -108,11 +108,15 @@ out = result.map(lambda x:
 out.coalesce(1).saveAsTextFile(f"{OUTPUT_PATH}/ranking_raw")
 
 parts = glob.glob(f"{OUTPUT_PATH}/ranking_raw/part-*")
-if parts:
+if parts and "cleaned" in INPUT_PATH:
+    print("Dataset completo rilevato. Aggiornamento output.csv...")
     with open(f"{OUTPUT_PATH}/output.csv", "w") as fout:
         fout.write("origin|carrier|num_flights|avg_dep|avg_arr|cancel_rate|avg_dep_airport|dep_diff|rank\n")
         with open(parts[0], "r") as fin:
             shutil.copyfileobj(fin, fout)
+elif parts:
+    print(f"Dataset sample rilevato. Salto aggiornamento {OUTPUT_PATH}/output.csv")
+
 shutil.rmtree(f"{OUTPUT_PATH}/ranking_raw", ignore_errors=True)
 
 elapsed = round(time.time() - start, 2)

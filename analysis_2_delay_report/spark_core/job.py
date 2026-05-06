@@ -94,14 +94,19 @@ final_rdd = bands_rdd.join(causes_pivoted_rdd) \
 # Schema finale: origin, month, band, num, avg_dep, avg_arr, cause1, cause2, cause3
 final_df = spark.createDataFrame(final_rdd, ["origin", "month", "delay_band", "num_flights", "avg_dep", "avg_arr", "top_cause_1", "top_cause_2", "top_cause_3"])
 
-final_df.coalesce(1).write.mode("overwrite") \
+final_df.orderBy("origin", "month", "delay_band") \
+    .coalesce(1).write.mode("overwrite") \
     .option("header", "true") \
     .option("delimiter", "|") \
     .csv(os.path.join(OUTPUT_PATH, "temp"))
 
 parts = glob.glob(os.path.join(OUTPUT_PATH, "temp", "part-*.csv"))
-if parts:
+if parts and "cleaned" in INPUT_PATH:
     shutil.copy(parts[0], os.path.join(OUTPUT_PATH, "output.csv"))
+    print(f"Dataset completo rilevato. Risultati salvati in {OUTPUT_PATH}/output.csv")
+elif parts:
+    print(f"Dataset sample rilevato. Salto aggiornamento {OUTPUT_PATH}/output.csv")
+
 shutil.rmtree(os.path.join(OUTPUT_PATH, "temp"), ignore_errors=True)
 
 elapsed = round(time.time() - start, 2)

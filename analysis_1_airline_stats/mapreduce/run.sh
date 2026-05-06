@@ -40,9 +40,13 @@ hadoop jar "$STREAMING_JAR" \
     -file    "$REDUCER"
 
 # ─── Scarica output da HDFS ──────────────────────────────────────────────────
-echo "Download risultati..."
-echo "carrier|origin|month|num_flights|min_arr_delay|max_arr_delay|avg_arr_delay|cancel_rate|months_active" > "$OUTPUT_LOCAL/output.csv"
-hadoop fs -cat "$HDFS_OUTPUT/part-*" >> "$OUTPUT_LOCAL/output.csv"
+if [[ "$INPUT" == *"cleaned"* ]]; then
+    echo "Dataset completo rilevato. Aggiornamento risultati finali..."
+    echo "carrier|origin|month|num_flights|min_arr_delay|max_arr_delay|avg_arr_delay|cancel_rate|months_active" > "$OUTPUT_LOCAL/output.csv"
+    hadoop fs -cat "$HDFS_OUTPUT/part-*" >> "$OUTPUT_LOCAL/output.csv"
+else
+    echo "Dataset sample rilevato ($INPUT_FILENAME). Salto aggiornamento output.csv."
+fi
 
 END=$(date +%s)
 echo "End: $(date)"

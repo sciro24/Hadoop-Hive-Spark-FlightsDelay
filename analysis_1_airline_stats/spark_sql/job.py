@@ -91,9 +91,12 @@ results.coalesce(1).write.mode("overwrite") \
     .csv(OUTPUT_PATH + "/raw")
 
 part_files = glob.glob(f"{OUTPUT_PATH}/raw/part-*.csv")
-if part_files:
+if part_files and "cleaned" in INPUT_PATH:
     shutil.copy(part_files[0], f"{OUTPUT_PATH}/output.csv")
-    
+    print(f"Dataset completo rilevato. Risultati salvati in {OUTPUT_PATH}/output.csv")
+elif part_files:
+    print(f"Dataset sample rilevato. Salto aggiornamento {OUTPUT_PATH}/output.csv")
+
 shutil.rmtree(f"{OUTPUT_PATH}/raw", ignore_errors=True)
 
 elapsed = round(time.time() - start, 2)

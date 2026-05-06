@@ -65,19 +65,21 @@ SELECT * FROM results_unified;
 "
 
 # ─── Post-processing ─────────────────────────────────────────────────────────
-echo "Aggiunta header e pulizia..."
-HEADER="origin|month|delay_band|num_flights|avg_dep|avg_arr|top_cause_1|top_cause_2|top_cause_3"
+if [[ "$INPUT" == *"cleaned"* ]]; then
+    echo "Dataset completo rilevato. Aggiornamento risultati finali..."
+    HEADER="origin|month|delay_band|num_flights|avg_dep|avg_arr|top_cause_1|top_cause_2|top_cause_3"
+    
+    # shellcheck disable=SC2012
+    PART_FILE=$(ls "${OUTPUT_DIR}"/000000_* 2>/dev/null | head -n 1)
 
-# shellcheck disable=SC2012
-PART_FILE=$(ls "${OUTPUT_DIR}"/000000_* 2>/dev/null | head -n 1)
-
-if [ -n "$PART_FILE" ]; then
-    echo "$HEADER" > "${OUTPUT_DIR}/output.csv"
-    cat "$PART_FILE" >> "${OUTPUT_DIR}/output.csv"
-    rm -f "$PART_FILE"
+    if [ -n "$PART_FILE" ]; then
+        echo "$HEADER" > "${OUTPUT_DIR}/output.csv"
+        cat "$PART_FILE" >> "${OUTPUT_DIR}/output.csv"
+        rm -f "$PART_FILE"
+        echo "Risultati salvati in ${OUTPUT_DIR}/output.csv"
+    fi
 else
-    echo "ERRORE: File risultati non trovato!"
-    exit 1
+    echo "Dataset sample rilevato ($INPUT_FILENAME). Salto aggiornamento output.csv."
 fi
 
 # Pulisce eventuali file temporanei di Hive e file nascosti .crc
