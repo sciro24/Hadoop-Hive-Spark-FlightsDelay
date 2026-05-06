@@ -6,7 +6,7 @@ INPUT="${BENCHMARK_INPUT:-data/cleaned/flight_data_2024_cleaned.csv}"
 INPUT_FILENAME=$(basename "$INPUT")
 
 HDFS_DIR="/user/hive/warehouse/flights_clean"
-OUTPUT_DIR="results/analysis_1/hive"
+OUTPUT_DIR="$(pwd)/results/analysis_1/hive"
 HQL="analysis_1_airline_stats/hive/queries.hql"
 
 echo "=== Analisi 3.1 — Hive ==="
@@ -18,8 +18,8 @@ mkdir -p "$OUTPUT_DIR"
 
 # ─── Carica CSV su HDFS ───────────────────────────────────────────────────────
 echo "Caricamento CSV su HDFS..."
-hadoop fs -mkdir -p "$HDFS_DIR"
-hadoop fs -put -f "$INPUT" "$HDFS_DIR/"
+hadoop fs -mkdir -p "$HDFS_DIR" 2>/dev/null
+hadoop fs -put -f "$INPUT" "$HDFS_DIR/" 2>/dev/null
 
 # ─── Ricrea la tabella Hive ───────────────────────────────────────────────────
 hive -e "
@@ -35,47 +35,53 @@ CREATE EXTERNAL TABLE flights_clean (
 )
 ROW FORMAT DELIMITED FIELDS TERMINATED BY ','
 STORED AS TEXTFILE
-LOCATION '$HDFS_DIR'
+LOCATION '${HDFS_DIR}'
 TBLPROPERTIES ('skip.header.line.count'='1');
 " 2>/dev/null
 
 # ─── Esegui HQL ──────────────────────────────────────────────────────────────
 echo "Esecuzione query Hive..."
-hive -f "$HQL" 2>&1 | tee "$OUTPUT_DIR/hive_log.txt"
+hive -f "$HQL" 2>&1 \
+    | grep -v -E "^SLF4J:|^WARNING:|^Logging initialized|^\s+at |AlreadyExistsException|\
+^WARN |^INFO |^Number of reduce|^In order to|^set mapreduce|\
+^Starting Job|^Kill Command|^Hadoop job information|Stage-[0-9]+ map =|\
+^Launched|^Ended Job|^Stage-Stage|^Total MapReduce|^MapReduce Jobs|\
+^MapredLocal|Execution completed|task succeeded|^Moving data|\
+Dump the side|Uploaded [0-9]|End of local task|^Stage-[0-9]+ is" \
+    | tee "$OUTPUT_DIR/hive_log.txt"
 
 # ─── Pulizia output precedente ────────────────────────────────────────────────
 rm -f  "$OUTPUT_DIR/output.csv"
-rm -rf "$OUTPUT_DIR/raw"
+rm -rf "$OUTPUT_DIR/raw"     # ← Hive richiede che NON esista già
 
 # ─── Esporta risultato ────────────────────────────────────────────────────────
 echo "Esportazione risultati..."
+RAW_DIR="${OUTPUT_DIR}/raw"
+
 hive -e "
 USE flights;
-INSERT OVERWRITE LOCAL DIRECTORY '$OUTPUT_DIR/raw'
-ROW FORMAT DELIMITED FIELDS TERMINATED BY '|'
+INSERT OVERWRITE LOCAL DIRECTORY 'file://${RAW_DIR}'
+ROW FORMAT DELIMITED 
+FIELDS TERMINATED BY '|' 
+COLLECTION ITEMS TERMINATED BY ','
 SELECT
-    carrier,
-    origin,
-    month,
-    num_flights,
-    min_arr_delay,
-    max_arr_delay,
-    avg_arr_delay,
+    carrier, origin, month, num_flights,
+    min_arr_delay, max_arr_delay, avg_arr_delay,
     cancel_rate,
-    CONCAT_WS(',', SORT_ARRAY(months_active))
+    months_active
 FROM results_airline_stats
 ORDER BY carrier, origin, month;
-" 2>/dev/null
+"
 
 # Header + dati
 echo "carrier|origin|month|num_flights|min_arr_delay|max_arr_delay|avg_arr_delay|cancel_rate|months_active" \
     > "$OUTPUT_DIR/output.csv"
 
-cat "$OUTPUT_DIR"/raw/000000_0 >> "$OUTPUT_DIR/output.csv" 2>/dev/null || \
-cat "$OUTPUT_DIR"/raw/* >> "$OUTPUT_DIR/output.csv"
+cat "$RAW_DIR"/000000_0 >> "$OUTPUT_DIR/output.csv" 2>/dev/null || \
+cat "$RAW_DIR"/* >> "$OUTPUT_DIR/output.csv"
 
 echo "Pulizia file temporanei..."
-rm -rf "$OUTPUT_DIR/raw" "$OUTPUT_DIR/hive_log.txt"
+rm -rf "$RAW_DIR" "$OUTPUT_DIR/hive_log.txt"
 
 END=$(date +%s)
 echo "End: $(date)"
