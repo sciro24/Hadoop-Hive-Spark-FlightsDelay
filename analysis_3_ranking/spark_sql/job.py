@@ -10,9 +10,10 @@ import time
 from pathlib import Path
 from pyspark.sql import SparkSession
 
+import sys
 # ─── Paths ────────────────────────────────────────────────────────────────────
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
-INPUT_PATH   = str(PROJECT_ROOT / "data" / "cleaned" / "flight_data_2024_cleaned.csv")
+INPUT_PATH   = sys.argv[1] if len(sys.argv) > 1 else str(PROJECT_ROOT / "data" / "cleaned" / "flight_data_2024_cleaned.parquet")
 OUTPUT_PATH  = str(PROJECT_ROOT / "results" / "analysis_3" / "spark_sql")
 os.makedirs(OUTPUT_PATH, exist_ok=True)
 

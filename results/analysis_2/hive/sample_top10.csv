@@ -1,0 +1,11 @@
+origin|month|delay_band|num_flights|avg_dep_delay|avg_arr_delay
+ABE|1|high|46|238.11|229.41
+ABE|1|low|413|-5.94|-14.48
+ABE|1|medium|48|30.75|29.23
+ABE|1|unknown|13|\N|\N
+ABE|2|high|21|221.71|211.95
+ABE|2|low|442|-6.75|-19.6
+ABE|2|medium|36|29.19|12.86
+ABE|2|unknown|6|\N|\N
+ABE|3|high|38|180.5|170.45
+ABE|3|low|526|-6.26|-18.36

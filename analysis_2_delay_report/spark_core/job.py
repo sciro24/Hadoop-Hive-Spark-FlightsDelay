@@ -8,7 +8,7 @@ from pathlib import Path
 from pyspark import SparkContext, SparkConf
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
-INPUT_PATH   = sys.argv[1] if len(sys.argv) > 1 else str(PROJECT_ROOT / "data" / "cleaned" / "flight_data_2024_cleaned.csv")
+INPUT_PATH   = sys.argv[1] if len(sys.argv) > 1 else str(PROJECT_ROOT / "data" / "cleaned" / "flight_data_2024_cleaned.parquet")
 OUTPUT_PATH  = str(PROJECT_ROOT / "results" / "analysis_2" / "spark_core")
 os.makedirs(OUTPUT_PATH, exist_ok=True)
 
@@ -32,13 +32,17 @@ print(f"Input: {INPUT_PATH}")
 
 start = time.time()
 
-# ─── 1. Caricamento Parquet ───────────────────────────────────────────────────
-# Leggiamo il Parquet e lo convertiamo in RDD di tuple per mantenere la logica esistente
 df = spark.read.parquet(INPUT_PATH)
 records = df.rdd.map(lambda r: (
-    r.origin, r.month, r.dep_delay, r.arr_delay, 
-    r.carrier_delay, r.weather_delay, r.nas_delay, 
-    r.security_delay, r.late_aircraft_delay
+    r.origin, 
+    r.month, 
+    r.dep_delay if r.dep_delay is not None else None,  # Manteniamo None per delay_band
+    r.arr_delay if r.arr_delay is not None else None,
+    r.carrier_delay or 0.0, 
+    r.weather_delay or 0.0, 
+    r.nas_delay or 0.0, 
+    r.security_delay or 0.0, 
+    r.late_aircraft_delay or 0.0
 ))
 
 records.cache()

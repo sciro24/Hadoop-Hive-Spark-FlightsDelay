@@ -14,7 +14,7 @@ from pyspark import SparkContext, SparkConf
 
 # ─── Paths ────────────────────────────────────────────────────────────────────
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
-INPUT_PATH   = sys.argv[1] if len(sys.argv) > 1 else str(PROJECT_ROOT / "data" / "cleaned" / "flight_data_2024_cleaned.csv")
+INPUT_PATH   = sys.argv[1] if len(sys.argv) > 1 else str(PROJECT_ROOT / "data" / "cleaned" / "flight_data_2024_cleaned.parquet")
 OUTPUT_PATH  = str(PROJECT_ROOT / "results" / "analysis_3" / "spark_core")
 os.makedirs(OUTPUT_PATH, exist_ok=True)
 
@@ -46,8 +46,13 @@ start = time.time()
 # ─── 1. Caricamento e parsing Parquet ─────────────────────────────────────────
 df = spark.read.parquet(INPUT_PATH)
 # Convertiamo in RDD di tuple: (origin, carrier, dep_delay, arr_delay, cancelled)
+# Usiamo 'or 0.0' perché in Parquet i NULL sono None, e sommare None darebbe errore
 records = df.rdd.map(lambda r: (
-    r.origin, r.op_unique_carrier, r.dep_delay, r.arr_delay, r.cancelled
+    r.origin, 
+    r.op_unique_carrier, 
+    r.dep_delay or 0.0, 
+    r.arr_delay or 0.0, 
+    r.cancelled or 0.0
 ))
 
 records.cache()
