@@ -2,15 +2,19 @@
 # ─── Benchmark completo: tutte le analisi × tutte le tecnologie × tutti i sample ─
 set -e
 
+# ─── Silenzia WARN Hadoop/Hive/Spark ─────────────────────────────────────────
+export HADOOP_ROOT_LOGGER="ERROR,console"
+export HADOOP_OPTS="-Dlog4j.rootLogger=ERROR,console \
+                    -Dlog4j.logger.org.apache.hadoop=ERROR \
+                    -Dlog4j.logger.org.apache.hadoop.util.NativeCodeLoader=ERROR \
+                    $HADOOP_OPTS"
+export HIVE_OPTS="--hiveconf hive.root.logger=ERROR,console $HIVE_OPTS"
+
 # ─── Configurazione ───────────────────────────────────────────────────────────
 TRACKER="python3 benchmarks/benchmark_tracker.py"
 SAMPLES_DIR="data/samples"
 CLEANED="data/cleaned/flight_data_2024_cleaned.csv"
 
-# Sample da testare — aggiunti 125pct e 150pct
-SAMPLES_PCT=("010pct" "025pct" "050pct" "125pct" "150pct")
-
-# Frazioni corrispondenti per la generazione automatica
 declare -A SAMPLE_FRACS
 SAMPLE_FRACS["010pct"]="0.10"
 SAMPLE_FRACS["025pct"]="0.25"
@@ -36,18 +40,19 @@ SCRIPTS["3.3:spark_sql"]="./analysis_3_ranking/spark_sql/run.sh"
 
 ANALYSES=${ANALYSES:-"3.1 3.2 3.3"}
 
-# ─── Verifica prerequisiti ────────────────────────────────────────────────────
 echo ""
 echo "╔══════════════════════════════════════════════════════════╗"
 echo "║         BENCHMARK SUITE — Flight Delay 2024             ║"
 echo "╠══════════════════════════════════════════════════════════╣"
 echo "║  Analisi:  $ANALYSES"
-echo "║  Sample:   ${SAMPLES_PCT[*]} + cleaned"
+echo "║  Sample:   010pct 025pct 050pct full 125pct 150pct"
 echo "╚══════════════════════════════════════════════════════════╝"
 echo ""
 
+mkdir -p logs
+
 # Genera i sample se non esistono
-for pct in "${SAMPLES_PCT[@]}"; do
+for pct in "010pct" "025pct" "050pct" "125pct" "150pct"; do
     sample_file="${SAMPLES_DIR}/sample_${pct}.csv"
     if [ ! -f "$sample_file" ]; then
         echo "⚠️  Sample ${pct} non trovato, lo genero..."
@@ -75,51 +80,54 @@ for analysis in $ANALYSES; do
             continue
         fi
 
-        # ── Esegui su ogni sample ─────────────────────────────────────────────
-        for pct in "${SAMPLES_PCT[@]}"; do
+        # ── Ordine: 010 → 025 → 050 → full(100%) → 125 → 150 ────────────────
+        for pct in "010pct" "025pct" "050pct"; do
             input="${SAMPLES_DIR}/sample_${pct}.csv"
-
-            if [ ! -f "$input" ]; then
-                echo "❌  File $input non trovato, skip."
-                continue
-            fi
-
+            if [ ! -f "$input" ]; then echo "❌  $input non trovato, skip."; continue; fi
             echo ""
             echo "▶  Analisi ${analysis} | ${tech} | sample ${pct}"
             echo "   Input: $input"
-
             export BENCHMARK_INPUT="$input"
-
             $TRACKER \
-                --analysis "$analysis" \
-                --tech     "$tech" \
-                --input    "$input" \
-                --cmd      "$script" \
+                --analysis "$analysis" --tech "$tech" \
+                --input    "$input"    --cmd  "$script" \
                 --notes    "sample_${pct}" \
             && TOTAL_JOBS=$((TOTAL_JOBS + 1)) \
             || { FAILED_JOBS=$((FAILED_JOBS + 1)); TOTAL_JOBS=$((TOTAL_JOBS + 1)); }
         done
 
-        # ── Esegui sul dataset completo cleaned (100%) ────────────────────────
+        # ── Full dataset 100% ─────────────────────────────────────────────────
         echo ""
         echo "▶  Analisi ${analysis} | ${tech} | 100% (cleaned)"
         echo "   Input: $CLEANED"
-
         export BENCHMARK_INPUT="$CLEANED"
-
         $TRACKER \
-            --analysis "$analysis" \
-            --tech     "$tech" \
-            --input    "$CLEANED" \
-            --cmd      "$script" \
+            --analysis "$analysis" --tech "$tech" \
+            --input    "$CLEANED"  --cmd  "$script" \
             --notes    "full_dataset" \
         && TOTAL_JOBS=$((TOTAL_JOBS + 1)) \
         || { FAILED_JOBS=$((FAILED_JOBS + 1)); TOTAL_JOBS=$((TOTAL_JOBS + 1)); }
 
+        # ── 125% e 150% ───────────────────────────────────────────────────────
+        for pct in "125pct" "150pct"; do
+            input="${SAMPLES_DIR}/sample_${pct}.csv"
+            if [ ! -f "$input" ]; then echo "❌  $input non trovato, skip."; continue; fi
+            echo ""
+            echo "▶  Analisi ${analysis} | ${tech} | sample ${pct}"
+            echo "   Input: $input"
+            export BENCHMARK_INPUT="$input"
+            $TRACKER \
+                --analysis "$analysis" --tech "$tech" \
+                --input    "$input"    --cmd  "$script" \
+                --notes    "sample_${pct}" \
+            && TOTAL_JOBS=$((TOTAL_JOBS + 1)) \
+            || { FAILED_JOBS=$((FAILED_JOBS + 1)); TOTAL_JOBS=$((TOTAL_JOBS + 1)); }
+        done
+
     done
 done
 
-# ─── Raccolta prime 10 righe per ogni job ─────────────────────────────────────
+# ─── Raccolta prime 10 righe ──────────────────────────────────────────────────
 echo ""
 echo "Raccolta sample output (prime 10 righe)..."
 python3 benchmarks/collect_samples.py
