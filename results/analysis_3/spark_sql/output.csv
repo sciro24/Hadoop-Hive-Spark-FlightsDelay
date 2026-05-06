@@ -1,4 +1,4 @@
-origin|carrier|num_flights|avg_dep_delay|avg_arr_delay|cancel_rate|avg_dep_airport|dep_diff|rank_pos
+origin|carrier|num_flights|avg_dep_delay|avg_arr_delay|cancel_rate|avg_dep_airport|dep_diff|rank
 ABE|G4|1837|8.4312|0.6431|0.0152|11.4981|-3.0669|1
 ABE|9E|1010|9.459|0.7285|0.0099|11.4981|-2.0391|2
 ABE|OH|1161|13.0401|1.9108|0.0121|11.4981|1.542|3

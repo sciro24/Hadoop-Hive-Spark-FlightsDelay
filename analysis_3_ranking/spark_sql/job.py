@@ -89,9 +89,9 @@ query = """
         RANK() OVER (
             PARTITION BY origin
             ORDER BY avg_dep_delay ASC
-        ) AS rank_pos
+        ) AS rank
     FROM joined
-    ORDER BY origin, rank_pos
+    ORDER BY origin, rank
 """
 
 result = spark.sql(query)

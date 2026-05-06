@@ -46,12 +46,12 @@ start = time.time()
 # ─── 1. Caricamento e parsing Parquet ─────────────────────────────────────────
 df = spark.read.parquet(INPUT_PATH)
 # Convertiamo in RDD di tuple: (origin, carrier, dep_delay, arr_delay, cancelled)
-# Usiamo 'or 0.0' perché in Parquet i NULL sono None, e sommare None darebbe errore
+# Manteniamo None per dep/arr_delay così le medie ignorano i NULL (come Spark SQL)
 records = df.rdd.map(lambda r: (
     r.origin, 
     r.op_unique_carrier, 
-    r.dep_delay or 0.0, 
-    r.arr_delay or 0.0, 
+    r.dep_delay,        # None se NULL
+    r.arr_delay,        # None se NULL
     r.cancelled or 0.0
 ))
 
@@ -59,13 +59,22 @@ records.cache()
 
 
 # ─── 2. Statistiche per (origin, carrier) ────────────────────────────────────
+# Tuple: (dep_sum, arr_sum, canc_sum, total_count, dep_count, arr_count)
 carrier_stats = records \
-    .map(lambda r: ((r[0], r[1]), (r[2], r[3], r[4], 1))) \
-    .reduceByKey(lambda a, b: (a[0]+b[0], a[1]+b[1], a[2]+b[2], a[3]+b[3]))
+    .map(lambda r: ((r[0], r[1]), (
+        r[2] if r[2] is not None else 0.0,  # dep_sum (0 if NULL)
+        r[3] if r[3] is not None else 0.0,  # arr_sum (0 if NULL)
+        r[4],                                # cancelled
+        1,                                   # total_count
+        1 if r[2] is not None else 0,        # dep_count (conteggio validi)
+        1 if r[3] is not None else 0         # arr_count (conteggio validi)
+    ))) \
+    .reduceByKey(lambda a, b: (a[0]+b[0], a[1]+b[1], a[2]+b[2], a[3]+b[3], a[4]+b[4], a[5]+b[5]))
 
 
-# ─── 3. Media globale dep_delay per aeroporto ────────────────────────────────
+# ─── 3. Media globale dep_delay per aeroporto (solo valori non-NULL) ──────────
 airport_avg = records \
+    .filter(lambda r: r[2] is not None) \
     .map(lambda r: (r[0], (r[2], 1))) \
     .reduceByKey(lambda a, b: (a[0]+b[0], a[1]+b[1])) \
     .mapValues(lambda v: round(v[0] / v[1], 4))
@@ -79,12 +88,12 @@ joined = carrier_by_origin.join(airport_avg)
 
 
 def compute_row(kv):
-    origin, ((carrier, (dep_sum, arr_sum, canc_sum, count)), avg_airport) = kv
-    avg_dep  = round(dep_sum  / count, 4)
-    avg_arr  = round(arr_sum  / count, 4)
-    cancel_r = round(canc_sum / count, 4)
+    origin, ((carrier, (dep_sum, arr_sum, canc_sum, total, dep_cnt, arr_cnt)), avg_airport) = kv
+    avg_dep  = round(dep_sum / dep_cnt, 4) if dep_cnt > 0 else 0.0
+    avg_arr  = round(arr_sum / arr_cnt, 4) if arr_cnt > 0 else 0.0
+    cancel_r = round(canc_sum / total,  4) if total   > 0 else 0.0
     dep_diff = round(avg_dep - avg_airport, 4)
-    return (origin, carrier, count, avg_dep, avg_arr, cancel_r, avg_airport, dep_diff)
+    return (origin, carrier, total, avg_dep, avg_arr, cancel_r, avg_airport, dep_diff)
 
 
 rows = joined.map(compute_row)
@@ -111,7 +120,7 @@ parts = glob.glob(f"{OUTPUT_PATH}/ranking_raw/part-*")
 if parts and "cleaned" in INPUT_PATH:
     print("Dataset completo rilevato. Aggiornamento output.csv...")
     with open(f"{OUTPUT_PATH}/output.csv", "w") as fout:
-        fout.write("origin|carrier|num_flights|avg_dep|avg_arr|cancel_rate|avg_dep_airport|dep_diff|rank\n")
+        fout.write("origin|carrier|num_flights|avg_dep_delay|avg_arr_delay|cancel_rate|avg_dep_airport|dep_diff|rank\n")
         with open(parts[0], "r") as fin:
             shutil.copyfileobj(fin, fout)
 elif parts:
@@ -126,7 +135,7 @@ print(f"Risultati in: {OUTPUT_PATH}")
 
 # ─── 7. Prime 10 righe ───────────────────────────────────────────────────────
 print("\n=== Prime 10 righe ===")
-print("origin|carrier|num_flights|avg_dep|avg_arr|cancel_rate|avg_dep_airport|dep_diff|rank")
+print("origin|carrier|num_flights|avg_dep_delay|avg_arr_delay|cancel_rate|avg_dep_airport|dep_diff|rank")
 for row in result.take(10):
     print("|".join(str(x) for x in row))
 

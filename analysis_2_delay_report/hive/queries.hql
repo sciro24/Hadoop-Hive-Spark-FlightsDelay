@@ -51,8 +51,8 @@ FROM (
             WHEN dep_delay > 60              THEN 'high'
         END AS delay_band,
         COUNT(*) AS num_flights,
-        ROUND(AVG(COALESCE(dep_delay, 0)), 2) AS avg_dep,
-        ROUND(AVG(COALESCE(arr_delay, 0)), 2) AS avg_arr
+        ROUND(AVG(dep_delay), 2) AS avg_dep,
+        ROUND(AVG(arr_delay), 2) AS avg_arr
     FROM flights_clean
     WHERE dep_delay IS NOT NULL
     GROUP BY origin, month,

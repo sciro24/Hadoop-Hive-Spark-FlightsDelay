@@ -50,8 +50,7 @@ def get_band(delay):
     return 'high'
 
 bands_rdd = records.filter(lambda r: r[2] is not None) \
-    .map(lambda r: ((r[0], r[1]), (get_band(r[2]), 1, r[2] or 0.0, r[3] or 0.0))) \
-    .map(lambda x: ((x[0][0], x[0][1], x[1][0]), (x[1][1], x[1][2], x[1][3]))) \
+    .map(lambda r: ((r[0], r[1], get_band(r[2])), (1, r[2], r[3] or 0.0))) \
     .reduceByKey(lambda a, b: (a[0]+b[0], a[1]+b[1], a[2]+b[2])) \
     .map(lambda x: ((x[0][0], x[0][1]), (x[0][2], x[1][0], round(x[1][1]/x[1][0], 2), round(x[1][2]/x[1][0], 2))))
 
@@ -66,18 +65,6 @@ causes_avg = records.flatMap(lambda r: [
   .reduceByKey(lambda a, b: (a[0]+b[0], a[1]+b[1])) \
   .map(lambda x: ((x[0][0], x[0][1]), (x[0][2], x[1][0]/x[1][1])))
 
-def pivot_causes(partition):
-    res = []
-    for key, values in partition:
-        sorted_causes = sorted(list(values), key=lambda x: x[1], reverse=True)[:3]
-        c1 = sorted_causes[0][0] if len(sorted_causes) > 0 else "none"
-        c2 = sorted_causes[1][0] if len(sorted_causes) > 1 else "none"
-        c3 = sorted_causes[2][0] if len(sorted_causes) > 2 else "none"
-        res.append((key, (c1, c2, c3)))
-    return res
-
-causes_pivoted_rdd = causes_avg.groupByKey().mapValues(lambda x: pivot_causes_logic(x))
-
 def pivot_causes_logic(values):
     sorted_causes = sorted(list(values), key=lambda x: x[1], reverse=True)[:3]
     c1 = sorted_causes[0][0] if len(sorted_causes) > 0 else "none"
@@ -87,9 +74,15 @@ def pivot_causes_logic(values):
 
 causes_pivoted_rdd = causes_avg.groupByKey().mapValues(pivot_causes_logic)
 
-# ─── 4. Join e Salvataggio ───────────────────────────────────────────────────
-final_rdd = bands_rdd.join(causes_pivoted_rdd) \
-    .map(lambda x: (x[0][0], x[0][1], x[1][0][0], x[1][0][1], x[1][0][2], x[1][0][3], x[1][1][0], x[1][1][1], x[1][1][2]))
+# ─── 4. Left Join e Salvataggio ──────────────────────────────────────────────
+final_rdd = bands_rdd.leftOuterJoin(causes_pivoted_rdd) \
+    .map(lambda x: (
+        x[0][0], x[0][1],
+        x[1][0][0], x[1][0][1], x[1][0][2], x[1][0][3],
+        x[1][1][0] if x[1][1] else "none",
+        x[1][1][1] if x[1][1] else "none",
+        x[1][1][2] if x[1][1] else "none"
+    ))
 
 # Schema finale: origin, month, band, num, avg_dep, avg_arr, cause1, cause2, cause3
 final_df = spark.createDataFrame(final_rdd, ["origin", "month", "delay_band", "num_flights", "avg_dep", "avg_arr", "top_cause_1", "top_cause_2", "top_cause_3"])
