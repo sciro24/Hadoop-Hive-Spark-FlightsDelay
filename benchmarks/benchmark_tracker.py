@@ -41,15 +41,10 @@ def get_file_info(filepath: str):
         size_bytes = sum(f.stat().st_size for f in p.rglob('*') if f.is_file())
         size_mb = round(size_bytes / (1024 * 1024), 2)
         try:
-            # Usa ParquetDataset per sommare i metadati di tutti i file nella directory
-            dataset = pq.ParquetDataset(p)
-            rows = dataset.metadata.num_rows
-        except:
-            try:
-                # Fallback manuale se Dataset fallisce: somma le righe di ogni file .parquet
-                rows = sum(pq.read_metadata(f).num_rows for f in p.rglob('*.parquet') if f.is_file())
-            except:
-                rows = "N/A"
+            # Somma le righe leggendo solo i metadati (molto veloce)
+            rows = sum(pq.read_metadata(f).num_rows for f in p.rglob('*.parquet') if f.is_file())
+        except Exception as e:
+            rows = "N/A"
     else:
         # Caso CSV (File singolo)
         size_mb = round(p.stat().st_size / (1024 * 1024), 2)

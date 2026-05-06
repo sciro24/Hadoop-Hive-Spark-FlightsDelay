@@ -1,29 +1,25 @@
 #!/usr/bin/env python3
 """
 Analisi 3.2 — Report Ritardi per Aeroporto e Periodo Temporale
-Tecnologia: Spark Core 3.5.8 (RDD API)
+Tecnologia: Spark Core 3.5.8 (RDD API) - UNIFICATO ORIZZONTALE
 """
 import os, sys, time, glob, shutil
 from pathlib import Path
-from pyspark import SparkContext, SparkConf
+from pyspark.sql import SparkSession
 
+# ─── Paths ────────────────────────────────────────────────────────────────────
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 INPUT_PATH   = sys.argv[1] if len(sys.argv) > 1 else str(PROJECT_ROOT / "data" / "cleaned" / "flight_data_2024_cleaned.parquet")
 OUTPUT_PATH  = str(PROJECT_ROOT / "results" / "analysis_2" / "spark_core")
 os.makedirs(OUTPUT_PATH, exist_ok=True)
 
-for folder in ["delay_report_raw", "delay_causes_raw"]:
-    p = os.path.join(OUTPUT_PATH, folder)
-    if os.path.exists(p):
-        shutil.rmtree(p)
+# ─── SparkSession ─────────────────────────────────────────────────────────────
+spark = SparkSession.builder \
+    .appName("Analysis_3.2_DelayReport_SparkCore") \
+    .master("local[*]") \
+    .config("spark.driver.memory", "4g") \
+    .getOrCreate()
 
-conf = SparkConf() \
-    .setAppName("Analysis_3.2_DelayReport_SparkCore") \
-    .setMaster("local[*]") \
-    .set("spark.driver.memory", "4g")
-
-from pyspark.sql import SparkSession
-spark = SparkSession.builder.config(conf=conf).getOrCreate()
 sc = spark.sparkContext
 sc.setLogLevel("WARN")
 
@@ -32,132 +28,84 @@ print(f"Input: {INPUT_PATH}")
 
 start = time.time()
 
+# ─── 1. Caricamento Parquet ───────────────────────────────────────────────────
 df = spark.read.parquet(INPUT_PATH)
 records = df.rdd.map(lambda r: (
     r.origin, 
     r.month, 
-    r.dep_delay if r.dep_delay is not None else None,  # Manteniamo None per delay_band
-    r.arr_delay if r.arr_delay is not None else None,
+    r.dep_delay,
+    r.arr_delay,
     r.carrier_delay or 0.0, 
     r.weather_delay or 0.0, 
     r.nas_delay or 0.0, 
     r.security_delay or 0.0, 
     r.late_aircraft_delay or 0.0
 ))
-
 records.cache()
 
-# ─── 2. Fasce di ritardo ──────────────────────────────────────────────────────
-def assign_band(dep_delay):
-    if dep_delay is None:
-        return "unknown"
-    if dep_delay < 15:
-        return "low"
-    elif dep_delay <= 60:
-        return "medium"
-    else:
-        return "high"
+# ─── 2. Calcolo Fasce di Ritardo (BAND) ──────────────────────────────────────
+def get_band(delay):
+    if delay < 15: return 'low'
+    if delay <= 60: return 'medium'
+    return 'high'
 
-def to_band_kv(rec):
-    origin, month, dep_delay, arr_delay, *_ = rec
-    band = assign_band(dep_delay)
-    # FIX: sep dep/arr_delay → accumuliamo sum e count separatamente
-    #      per le unknown dep/arr rimangono None → non entrano nella somma
-    dep = dep_delay if dep_delay is not None else 0.0
-    arr = arr_delay if arr_delay is not None else 0.0
-    dep_valid = 0 if dep_delay is None else 1   # contatore valori non-None
-    arr_valid = 0 if arr_delay is None else 1
-    return ((origin, month, band), (dep, arr, 1, dep_valid, arr_valid))
+bands_rdd = records.filter(lambda r: r[2] is not None) \
+    .map(lambda r: ((r[0], r[1]), (get_band(r[2]), 1, r[2] or 0.0, r[3] or 0.0))) \
+    .map(lambda x: ((x[0][0], x[0][1], x[1][0]), (x[1][1], x[1][2], x[1][3]))) \
+    .reduceByKey(lambda a, b: (a[0]+b[0], a[1]+b[1], a[2]+b[2])) \
+    .map(lambda x: ((x[0][0], x[0][1]), (x[0][2], x[1][0], round(x[1][1]/x[1][0], 2), round(x[1][2]/x[1][0], 2))))
 
-def merge_band(a, b):
-    return (a[0]+b[0], a[1]+b[1], a[2]+b[2], a[3]+b[3], a[4]+b[4])
+# ─── 3. Calcolo Cause Pivotate (TOP 3) ───────────────────────────────────────
+causes_avg = records.flatMap(lambda r: [
+    ((r[0], r[1], "carrier"), (r[4], 1)) if r[4] > 0 else None,
+    ((r[0], r[1], "weather"), (r[5], 1)) if r[5] > 0 else None,
+    ((r[0], r[1], "nas"),     (r[6], 1)) if r[6] > 0 else None,
+    ((r[0], r[1], "security"),(r[7], 1)) if r[7] > 0 else None,
+    ((r[0], r[1], "late_aircraft"), (r[8], 1)) if r[8] > 0 else None
+]).filter(lambda x: x is not None) \
+  .reduceByKey(lambda a, b: (a[0]+b[0], a[1]+b[1])) \
+  .map(lambda x: ((x[0][0], x[0][1]), (x[0][2], x[1][0]/x[1][1])))
 
-def format_avg(total, count):
-    """Ritorna None se nessun valore valido, altrimenti media arrotondata."""
-    if count == 0:
-        return None
-    return round(total / count, 2)
+def pivot_causes(partition):
+    res = []
+    for key, values in partition:
+        sorted_causes = sorted(list(values), key=lambda x: x[1], reverse=True)[:3]
+        c1 = sorted_causes[0][0] if len(sorted_causes) > 0 else "none"
+        c2 = sorted_causes[1][0] if len(sorted_causes) > 1 else "none"
+        c3 = sorted_causes[2][0] if len(sorted_causes) > 2 else "none"
+        res.append((key, (c1, c2, c3)))
+    return res
 
-delay_bands = records \
-    .map(to_band_kv) \
-    .reduceByKey(merge_band) \
-    .map(lambda kv: (
-        kv[0][0],                               # origin
-        kv[0][1],                               # month
-        kv[0][2],                               # delay_band
-        kv[1][2],                               # num_flights
-        format_avg(kv[1][0], kv[1][3]),         # avg_dep_delay (None per unknown)
-        format_avg(kv[1][1], kv[1][4]),         # avg_arr_delay (None per unknown)
-    )) \
-    .sortBy(lambda x: (x[0], x[1], x[2]))
+causes_pivoted_rdd = causes_avg.groupByKey().mapValues(lambda x: pivot_causes_logic(x))
 
-# ─── 3. Top 3 cause per (origin, month) ──────────────────────────────────────
-CAUSES = ["carrier_delay", "weather_delay", "nas_delay", "security_delay", "late_aircraft_delay"]
+def pivot_causes_logic(values):
+    sorted_causes = sorted(list(values), key=lambda x: x[1], reverse=True)[:3]
+    c1 = sorted_causes[0][0] if len(sorted_causes) > 0 else "none"
+    c2 = sorted_causes[1][0] if len(sorted_causes) > 1 else "none"
+    c3 = sorted_causes[2][0] if len(sorted_causes) > 2 else "none"
+    return (c1, c2, c3)
 
-def to_cause_kv(rec):
-    origin, month, _, _, carrier_d, weather_d, nas_d, security_d, late_d = rec
-    cause_values = [carrier_d, weather_d, nas_d, security_d, late_d]
-    return [
-        ((origin, month, CAUSES[i]), (val, 1))
-        for i, val in enumerate(cause_values) if val > 0
-    ]
+causes_pivoted_rdd = causes_avg.groupByKey().mapValues(pivot_causes_logic)
 
-causes_avg = records \
-    .flatMap(to_cause_kv) \
-    .reduceByKey(lambda a, b: (a[0]+b[0], a[1]+b[1])) \
-    .map(lambda kv: (
-        (kv[0][0], kv[0][1]),
-        (kv[0][2], round(kv[1][0] / kv[1][1], 4))
-    )) \
-    .groupByKey() \
-    .mapValues(lambda causes: sorted(causes, key=lambda x: -x[1])[:3]) \
-    .flatMap(lambda kv: [
-        (kv[0][0], kv[0][1], cause, avg_min, rank + 1)
-        for rank, (cause, avg_min) in enumerate(kv[1])
-    ]) \
-    .sortBy(lambda x: (x[0], x[1], x[4]))
+# ─── 4. Join e Salvataggio ───────────────────────────────────────────────────
+final_rdd = bands_rdd.join(causes_pivoted_rdd) \
+    .map(lambda x: (x[0][0], x[0][1], x[1][0][0], x[1][0][1], x[1][0][2], x[1][0][3], x[1][1][0], x[1][1][1], x[1][1][2]))
 
-# ─── 4. Salvataggio ───────────────────────────────────────────────────────────
-def fmt_val(v):
-    """Serializza None come stringa vuota (coerente con Spark SQL)."""
-    return "" if v is None else str(v)
+# Schema finale: origin, month, band, num, avg_dep, avg_arr, cause1, cause2, cause3
+final_df = spark.createDataFrame(final_rdd, ["origin", "month", "delay_band", "num_flights", "avg_dep", "avg_arr", "cause_1", "cause_2", "cause_3"])
 
-delay_bands_out = delay_bands.map(
-    lambda x: f"{x[0]}|{x[1]}|{x[2]}|{x[3]}|{fmt_val(x[4])}|{fmt_val(x[5])}"
-)
-delay_bands_out.coalesce(1).saveAsTextFile(f"{OUTPUT_PATH}/delay_report_raw")
+final_df.coalesce(1).write.mode("overwrite") \
+    .option("header", "true") \
+    .option("delimiter", "|") \
+    .csv(os.path.join(OUTPUT_PATH, "temp"))
 
-causes_out = causes_avg.map(
-    lambda x: f"{x[0]}|{x[1]}|{x[2]}|{x[3]}|{x[4]}"
-)
-causes_out.coalesce(1).saveAsTextFile(f"{OUTPUT_PATH}/delay_causes_raw")
-
-HEADERS = {
-    "output_delay_report.csv": "origin|month|delay_band|num_flights|avg_dep_delay|avg_arr_delay",
-    "output_delay_causes.csv": "origin|month|cause|avg_minutes|rank_pos",
-}
-for folder, outfile in [
-    ("delay_report_raw", "output_delay_report.csv"),
-    ("delay_causes_raw", "output_delay_causes.csv"),
-]:
-    parts = glob.glob(f"{OUTPUT_PATH}/{folder}/part-*")
-    if parts:
-        with open(f"{OUTPUT_PATH}/{outfile}", "w") as fout:
-            fout.write(HEADERS[outfile] + "\n")
-            with open(parts[0], "r") as fin:
-                shutil.copyfileobj(fin, fout)
-    shutil.rmtree(f"{OUTPUT_PATH}/{folder}", ignore_errors=True)
+parts = glob.glob(os.path.join(OUTPUT_PATH, "temp", "part-*.csv"))
+if parts:
+    shutil.copy(parts[0], os.path.join(OUTPUT_PATH, "output.csv"))
+shutil.rmtree(os.path.join(OUTPUT_PATH, "temp"), ignore_errors=True)
 
 elapsed = round(time.time() - start, 2)
 print(f"\nTempo di esecuzione: {elapsed}s")
-print(f"Risultati in: {OUTPUT_PATH}")
+final_df.show(10, truncate=False)
 
-print("\n=== Prime 10 righe delay_report ===")
-for row in delay_bands.take(10):
-    print(row)
-
-print("\n=== Prime 10 righe delay_causes ===")
-for row in causes_avg.take(10):
-    print(row)
-
-sc.stop()
+spark.stop()

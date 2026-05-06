@@ -54,44 +54,39 @@ rm -f  "$OUTPUT_DIR/output_delay_report.csv"
 rm -f  "$OUTPUT_DIR/output_delay_causes.csv"
 rm -rf "$OUTPUT_DIR/delay_report" "$OUTPUT_DIR/delay_causes"   # NON ricreare con mkdir
 
-# ─── Esporta risultati ────────────────────────────────────────────────────────
+# ─── Esporta i risultati ──────────────────────────────────────────────────────
 echo "Esportazione risultati..."
-
-DELAY_REPORT_DIR="${OUTPUT_DIR}/delay_report"
-DELAY_CAUSES_DIR="${OUTPUT_DIR}/delay_causes"
-
 hive -e "
 USE flights;
-INSERT OVERWRITE LOCAL DIRECTORY 'file://${DELAY_REPORT_DIR}'
+INSERT OVERWRITE LOCAL DIRECTORY '${OUTPUT_DIR}'
 ROW FORMAT DELIMITED FIELDS TERMINATED BY '|'
-SELECT * FROM results_delay_report ORDER BY origin, month, delay_band;
+STORED AS TEXTFILE
+SELECT * FROM results_unified;
 "
 
-hive -e "
-USE flights;
-INSERT OVERWRITE LOCAL DIRECTORY 'file://${DELAY_CAUSES_DIR}'
-ROW FORMAT DELIMITED FIELDS TERMINATED BY '|'
-SELECT * FROM results_delay_causes ORDER BY origin, month, rank_pos;
-"
+# ─── Post-processing ─────────────────────────────────────────────────────────
+echo "Aggiunta header e pulizia..."
+HEADER="origin|month|delay_band|num_flights|avg_dep|avg_arr|top_cause_1|top_cause_2|top_cause_3"
 
-echo "origin|month|delay_band|num_flights|avg_dep_delay|avg_arr_delay" \
-    > "$OUTPUT_DIR/output_delay_report.csv"
-cat "$DELAY_REPORT_DIR"/* >> "$OUTPUT_DIR/output_delay_report.csv" 2>/dev/null || true
+# shellcheck disable=SC2012
+PART_FILE=$(ls "${OUTPUT_DIR}"/000000_* 2>/dev/null | head -n 1)
 
-echo "origin|month|cause|avg_minutes|rank_pos" \
-    > "$OUTPUT_DIR/output_delay_causes.csv"
-cat "$DELAY_CAUSES_DIR"/* >> "$OUTPUT_DIR/output_delay_causes.csv" 2>/dev/null || true
+if [ -n "$PART_FILE" ]; then
+    echo "$HEADER" > "${OUTPUT_DIR}/output.csv"
+    cat "$PART_FILE" >> "${OUTPUT_DIR}/output.csv"
+    rm -f "$PART_FILE"
+else
+    echo "ERRORE: File risultati non trovato!"
+    exit 1
+fi
 
-echo "Pulizia file temporanei..."
-rm -rf "$DELAY_REPORT_DIR" "$DELAY_CAUSES_DIR" "$OUTPUT_DIR/hive_log.txt"
+# Pulisce eventuali file temporanei di Hive
+rm -f "${OUTPUT_DIR}"/000000_*
 
-END=$(date +%s)
 echo "End: $(date)"
-echo "Tempo di esecuzione: $((END - START))s"
+echo "Tempo di esecuzione: $(( $(date +%s) - START ))s"
 
+# ─── Anteprima ────────────────────────────────────────────────────────────────
 echo ""
-echo "=== Prime 10 righe delay_report ==="
-head -10 "$OUTPUT_DIR/output_delay_report.csv"
-echo ""
-echo "=== Prime 10 righe delay_causes ==="
-head -10 "$OUTPUT_DIR/output_delay_causes.csv"
+echo "=== Prime 10 righe ==="
+head -n 10 "${OUTPUT_DIR}/output.csv"

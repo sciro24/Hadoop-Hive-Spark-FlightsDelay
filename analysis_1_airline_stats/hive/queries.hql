@@ -33,10 +33,10 @@ WITH monthly_stats AS (
         origin,
         month,
         COUNT(*)                                AS num_flights,
-        ROUND(MIN(arr_delay),  2)               AS min_arr_delay,
-        ROUND(MAX(arr_delay),  2)               AS max_arr_delay,
-        ROUND(AVG(arr_delay),  2)               AS avg_arr_delay,
-        ROUND(SUM(cancelled) / COUNT(*), 4)     AS cancel_rate
+        ROUND(MIN(COALESCE(arr_delay, 0)),  2)  AS min_arr_delay,
+        ROUND(MAX(COALESCE(arr_delay, 0)),  2)  AS max_arr_delay,
+        ROUND(AVG(COALESCE(arr_delay, 0)),  2)  AS avg_arr_delay,
+        ROUND(SUM(COALESCE(cancelled, 0)) / COUNT(*), 4) AS cancel_rate
     FROM flights_clean
     WHERE op_unique_carrier IS NOT NULL
       AND origin            IS NOT NULL

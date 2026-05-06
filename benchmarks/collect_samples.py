@@ -6,25 +6,21 @@ results/<analisi>/<tecnologia>/sample_top10.csv
 import os, glob
 
 HEADERS = {
-    "analysis_1":              "carrier|origin|month|num_flights|min_arr_delay|max_arr_delay|avg_arr_delay|cancel_rate|months_active",
-    "analysis_2_delay_report": "origin|month|delay_band|num_flights|avg_dep_delay|avg_arr_delay",
-    "analysis_2_delay_causes": "origin|month|cause|avg_minutes|rank_pos",
-    "analysis_3":              "origin|carrier|num_flights|avg_dep_delay|avg_arr_delay|cancel_rate|avg_dep_airport|dep_diff|rank",
+    "analysis_1": "carrier|origin|month|num_flights|min_arr_delay|max_arr_delay|avg_arr_delay|cancel_rate|months_active",
+    "analysis_2": "origin|month|delay_band|num_flights|avg_dep|avg_arr|top_cause_1|top_cause_2|top_cause_3",
+    "analysis_3": "origin|carrier|num_flights|avg_dep_delay|avg_arr_delay|cancel_rate|avg_dep_airport|dep_diff|rank",
 }
 
 JOBS = [
-    ("results/analysis_1/mapreduce",  "analysis_1",              "output*.csv",              "analysis_1", "mapreduce"),
-    ("results/analysis_1/hive",       "analysis_1",              "output*.csv",              "analysis_1", "hive"),
-    ("results/analysis_1/spark_sql",  "analysis_1",              "output*.csv",              "analysis_1", "spark_sql"),
-    ("results/analysis_2/hive",       "analysis_2_delay_report", "output_delay_report*.csv", "analysis_2", "hive"),
-    ("results/analysis_2/spark_core", "analysis_2_delay_report", "output_delay_report.csv",  "analysis_2", "spark_core"),
-    ("results/analysis_2/spark_sql",  "analysis_2_delay_report", "output_delay_report*.csv", "analysis_2", "spark_sql"),
-    ("results/analysis_2/hive",       "analysis_2_delay_causes", "output_delay_causes*.csv", "analysis_2", "hive_causes"),
-    ("results/analysis_2/spark_core", "analysis_2_delay_causes", "output_delay_causes.csv",  "analysis_2", "spark_core_causes"),
-    ("results/analysis_2/spark_sql",  "analysis_2_delay_causes", "output_delay_causes*.csv", "analysis_2", "spark_sql_causes"),
-    ("results/analysis_3/mapreduce",  "analysis_3",              "output*.csv",              "analysis_3", "mapreduce"),
-    ("results/analysis_3/spark_core", "analysis_3",              "output.csv",               "analysis_3", "spark_core"),
-    ("results/analysis_3/spark_sql",  "analysis_3",              "output*.csv",              "analysis_3", "spark_sql"),
+    ("results/analysis_1/mapreduce",  "analysis_1",  "output*.csv", "analysis_1", "mapreduce"),
+    ("results/analysis_1/hive",       "analysis_1",  "output*.csv", "analysis_1", "hive"),
+    ("results/analysis_1/spark_sql",  "analysis_1",  "output*.csv", "analysis_1", "spark_sql"),
+    ("results/analysis_2/hive",       "analysis_2",  "output*.csv", "analysis_2", "hive"),
+    ("results/analysis_2/spark_core", "analysis_2",  "output*.csv", "analysis_2", "spark_core"),
+    ("results/analysis_2/spark_sql",  "analysis_2",  "output*.csv", "analysis_2", "spark_sql"),
+    ("results/analysis_3/mapreduce",  "analysis_3",  "output*.csv", "analysis_3", "mapreduce"),
+    ("results/analysis_3/spark_core", "analysis_3",  "output*.csv", "analysis_3", "spark_core"),
+    ("results/analysis_3/spark_sql",  "analysis_3",  "output*.csv", "analysis_3", "spark_sql"),
 ]
 
 # Tutti i prefissi noti di header da skippare (vecchi o corretti)

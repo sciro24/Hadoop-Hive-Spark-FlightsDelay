@@ -37,89 +37,88 @@ df = spark.read.parquet(INPUT_PATH)
 df.createOrReplaceTempView("flights")
 print(f"Righe caricate: {df.count():,}")
 
-# ─── Query 1 — Fasce di ritardo per (aeroporto, mese) ────────────────────────
-query_bands = """
-    SELECT
-        origin,
-        month,
-        CASE
-            WHEN dep_delay IS NULL           THEN 'unknown'
-            WHEN dep_delay < 15              THEN 'low'
-            WHEN dep_delay BETWEEN 15 AND 60 THEN 'medium'
-            WHEN dep_delay > 60              THEN 'high'
-            ELSE 'unknown'
-        END                             AS delay_band,
-        COUNT(*)                        AS num_flights,
-        ROUND(AVG(dep_delay), 2)        AS avg_dep_delay,
-        ROUND(AVG(arr_delay), 2)        AS avg_arr_delay
-    FROM flights
-    WHERE origin IS NOT NULL
-      AND month  IS NOT NULL
-    GROUP BY origin, month,
-        CASE
-            WHEN dep_delay IS NULL           THEN 'unknown'
-            WHEN dep_delay < 15              THEN 'low'
-            WHEN dep_delay BETWEEN 15 AND 60 THEN 'medium'
-            WHEN dep_delay > 60              THEN 'high'
-            ELSE 'unknown'
-        END
-    ORDER BY origin, month, delay_band
-"""
-
-# ─── Query 2 — Top 3 cause di ritardo per (aeroporto, mese) ──────────────────
-query_causes = """
-    WITH causes_raw AS (
-        SELECT origin, month, 'carrier_delay'       AS cause, AVG(carrier_delay)       AS avg_minutes FROM flights WHERE carrier_delay       > 0 GROUP BY origin, month
-        UNION ALL
-        SELECT origin, month, 'weather_delay'       AS cause, AVG(weather_delay)       AS avg_minutes FROM flights WHERE weather_delay       > 0 GROUP BY origin, month
-        UNION ALL
-        SELECT origin, month, 'nas_delay'           AS cause, AVG(nas_delay)           AS avg_minutes FROM flights WHERE nas_delay           > 0 GROUP BY origin, month
-        UNION ALL
-        SELECT origin, month, 'security_delay'      AS cause, AVG(security_delay)      AS avg_minutes FROM flights WHERE security_delay      > 0 GROUP BY origin, month
-        UNION ALL
-        SELECT origin, month, 'late_aircraft_delay' AS cause, AVG(late_aircraft_delay) AS avg_minutes FROM flights WHERE late_aircraft_delay > 0 GROUP BY origin, month
-    ),
-    ranked AS (
+# ─── Query Unificata e Professionale ──────────────────────────────────────────
+query = """
+    WITH 
+    -- 1. Calcolo Fasce di Ritardo
+    bands AS (
         SELECT
             origin,
             month,
-            cause,
-            ROUND(avg_minutes, 4)   AS avg_minutes,
-            RANK() OVER (PARTITION BY origin, month ORDER BY avg_minutes DESC) AS rank_pos
-        FROM causes_raw
+            CASE
+                WHEN dep_delay < 15              THEN 'low'
+                WHEN dep_delay BETWEEN 15 AND 60 THEN 'medium'
+                WHEN dep_delay > 60              THEN 'high'
+            END                             AS delay_band,
+            COUNT(*)                        AS num_flights,
+            ROUND(AVG(COALESCE(dep_delay, 0.0)), 2) AS avg_dep,
+            ROUND(AVG(COALESCE(arr_delay, 0.0)), 2) AS avg_arr
+        FROM flights
+        WHERE origin IS NOT NULL AND month IS NOT NULL AND dep_delay IS NOT NULL
+        GROUP BY origin, month, 
+            CASE
+                WHEN dep_delay < 15              THEN 'low'
+                WHEN dep_delay BETWEEN 15 AND 60 THEN 'medium'
+                WHEN dep_delay > 60              THEN 'high'
+            END
+    ),
+    -- 2. Calcolo Cause (Top 3)
+    causes_all AS (
+        SELECT origin, month, 'carrier' AS cause, AVG(carrier_delay) AS am FROM flights WHERE carrier_delay > 0 GROUP BY origin, month
+        UNION ALL
+        SELECT origin, month, 'weather' AS cause, AVG(weather_delay) AS am FROM flights WHERE weather_delay > 0 GROUP BY origin, month
+        UNION ALL
+        SELECT origin, month, 'nas'     AS cause, AVG(nas_delay)     AS am FROM flights WHERE nas_delay     > 0 GROUP BY origin, month
+        UNION ALL
+        SELECT origin, month, 'security' AS cause, AVG(security_delay) AS am FROM flights WHERE security_delay > 0 GROUP BY origin, month
+        UNION ALL
+        SELECT origin, month, 'late_aircraft' AS cause, AVG(late_aircraft_delay) AS am FROM flights WHERE late_aircraft_delay > 0 GROUP BY origin, month
+    ),
+    causes_ranked AS (
+        SELECT origin, month, cause,
+               ROW_NUMBER() OVER (PARTITION BY origin, month ORDER BY am DESC) as rnk
+        FROM causes_all
+    ),
+    causes_pivoted AS (
+        SELECT 
+            origin, month,
+            MAX(CASE WHEN rnk = 1 THEN cause END) as top_cause_1,
+            MAX(CASE WHEN rnk = 2 THEN cause END) as top_cause_2,
+            MAX(CASE WHEN rnk = 3 THEN cause END) as top_cause_3
+        FROM causes_ranked
+        WHERE rnk <= 3
+        GROUP BY origin, month
     )
-    SELECT origin, month, cause, avg_minutes, rank_pos
-    FROM ranked
-    WHERE rank_pos <= 3
-    ORDER BY origin, month, rank_pos
+    -- 3. Join Finale
+    SELECT 
+        b.origin, b.month, b.delay_band, b.num_flights, b.avg_dep, b.avg_arr,
+        COALESCE(c.top_cause_1, 'none') as top_cause_1,
+        COALESCE(c.top_cause_2, 'none') as top_cause_2,
+        COALESCE(c.top_cause_3, 'none') as top_cause_3
+    FROM bands b
+    LEFT JOIN causes_pivoted c ON b.origin = c.origin AND b.month = c.month
+    ORDER BY b.origin, b.month, b.delay_band
 """
 
-results_bands  = spark.sql(query_bands)
-results_causes = spark.sql(query_causes)
+results_unified = spark.sql(query)
 
 # ─── Salvataggio ──────────────────────────────────────────────────────────────
-for results, folder, outfile in [
-    (results_bands,  "delay_report_raw", "output_delay_report.csv"),
-    (results_causes, "delay_causes_raw", "output_delay_causes.csv"),
-]:
-    results.coalesce(1).write.mode("overwrite") \
-        .option("header", "true") \
-        .option("delimiter", "|") \
-        .csv(f"{OUTPUT_PATH}/{folder}")
-    parts = glob.glob(f"{OUTPUT_PATH}/{folder}/part-*.csv")
-    if parts:
-        shutil.copy(parts[0], f"{OUTPUT_PATH}/{outfile}")
-    shutil.rmtree(f"{OUTPUT_PATH}/{folder}", ignore_errors=True)
+results_unified.coalesce(1).write.mode("overwrite") \
+    .option("header", "true") \
+    .option("delimiter", "|") \
+    .csv(f"{OUTPUT_PATH}/temp")
+
+parts = glob.glob(f"{OUTPUT_PATH}/temp/part-*.csv")
+if parts:
+    shutil.copy(parts[0], f"{OUTPUT_PATH}/output.csv")
+shutil.rmtree(f"{OUTPUT_PATH}/temp", ignore_errors=True)
 
 elapsed = round(time.time() - start, 2)
 print(f"\nTempo di esecuzione: {elapsed}s")
 print(f"Risultati in: {OUTPUT_PATH}")
 
 # ─── Prime 10 righe ───────────────────────────────────────────────────────────
-print("\n=== Prime 10 righe delay_report ===")
-results_bands.show(10, truncate=False)
-
-print("\n=== Prime 10 righe delay_causes ===")
-results_causes.show(10, truncate=False)
+print("\n=== Prime 10 righe unificate ===")
+results_unified.show(10, truncate=False)
 
 spark.stop()
