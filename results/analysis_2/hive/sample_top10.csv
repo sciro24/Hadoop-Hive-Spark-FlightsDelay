@@ -1,0 +1,11 @@
+origin|month|delay_band|num_flights|avg_dep|avg_arr|top_cause_1|top_cause_2|top_cause_3
+ABE|1|high|30|241.3|234.03|weather|carrier|late_aircraft
+ABE|1|low|277|-5.51|-14.45|weather|carrier|late_aircraft
+ABE|1|medium|31|34.32|31.45|weather|carrier|late_aircraft
+ABE|2|high|14|227.93|217.93|weather|carrier|late_aircraft
+ABE|2|low|296|-6.66|-19.48|weather|carrier|late_aircraft
+ABE|2|medium|20|29.7|9.6|weather|carrier|late_aircraft
+ABE|3|high|23|173.43|163.39|carrier|late_aircraft|nas
+ABE|3|low|339|-6.19|-18.37|carrier|late_aircraft|nas
+ABE|3|medium|28|30.68|19.89|carrier|late_aircraft|nas
+ABE|4|high|29|258.66|250.38|carrier|weather|late_aircraft

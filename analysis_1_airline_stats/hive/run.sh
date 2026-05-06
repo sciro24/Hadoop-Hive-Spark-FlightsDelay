@@ -50,8 +50,8 @@ Dump the side|Uploaded [0-9]|End of local task|^Stage-[0-9]+ is" \
     | tee "$OUTPUT_DIR/hive_log.txt"
 
 # ─── Pulizia output precedente ────────────────────────────────────────────────
-rm -f  "$OUTPUT_DIR/output.csv"
-rm -rf "$OUTPUT_DIR/raw"     # ← Hive richiede che NON esista già
+# (La pulizia di output.csv ora avviene solo se il dataset è 'cleaned')
+# rm -rf "$OUTPUT_DIR/raw"  <-- Questo verrà rimosso automaticamente da INSERT OVERWRITE
 
 # ─── Esporta risultato ────────────────────────────────────────────────────────
 echo "Esportazione risultati..."
@@ -75,6 +75,7 @@ ORDER BY carrier, origin, month;
 # ─── Post-processing ─────────────────────────────────────────────────────────
 if [[ "$INPUT" == *"cleaned"* ]]; then
     echo "Dataset completo rilevato. Aggiornamento risultati finali..."
+    rm -f "$OUTPUT_DIR/output.csv"
     # Header + dati
     echo "carrier|origin|month|num_flights|min_arr_delay|max_arr_delay|avg_arr_delay|cancel_rate|months_active" \
         > "$OUTPUT_DIR/output.csv"

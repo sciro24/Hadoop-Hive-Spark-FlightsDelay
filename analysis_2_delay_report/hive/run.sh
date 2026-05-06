@@ -54,28 +54,34 @@ rm -f  "$OUTPUT_DIR/output_delay_report.csv"
 rm -f  "$OUTPUT_DIR/output_delay_causes.csv"
 rm -rf "$OUTPUT_DIR/delay_report" "$OUTPUT_DIR/delay_causes"   # NON ricreare con mkdir
 
-# ─── Esporta i risultati ──────────────────────────────────────────────────────
+# ─── Esporta risultato ────────────────────────────────────────────────────────
 echo "Esportazione risultati..."
+RAW_DIR="${OUTPUT_DIR}/raw"
+
 hive -e "
 USE flights;
-INSERT OVERWRITE LOCAL DIRECTORY '${OUTPUT_DIR}'
-ROW FORMAT DELIMITED FIELDS TERMINATED BY '|'
-STORED AS TEXTFILE
-SELECT * FROM results_unified;
+INSERT OVERWRITE LOCAL DIRECTORY 'file://${RAW_DIR}'
+ROW FORMAT DELIMITED 
+FIELDS TERMINATED BY '|' 
+SELECT
+    origin, month, delay_band, num_flights, avg_dep, avg_arr,
+    top_cause_1, top_cause_2, top_cause_3
+FROM results_unified
+ORDER BY origin, month, delay_band;
 "
 
 # ─── Post-processing ─────────────────────────────────────────────────────────
 if [[ "$INPUT" == *"cleaned"* ]]; then
     echo "Dataset completo rilevato. Aggiornamento risultati finali..."
+    rm -f "${OUTPUT_DIR}/output.csv"
     HEADER="origin|month|delay_band|num_flights|avg_dep|avg_arr|top_cause_1|top_cause_2|top_cause_3"
     
     # shellcheck disable=SC2012
-    PART_FILE=$(ls "${OUTPUT_DIR}"/000000_* 2>/dev/null | head -n 1)
+    PART_FILE=$(ls "${RAW_DIR}"/000000_* 2>/dev/null | head -n 1)
 
     if [ -n "$PART_FILE" ]; then
         echo "$HEADER" > "${OUTPUT_DIR}/output.csv"
         cat "$PART_FILE" >> "${OUTPUT_DIR}/output.csv"
-        rm -f "$PART_FILE"
         echo "Risultati salvati in ${OUTPUT_DIR}/output.csv"
     fi
 else
@@ -83,7 +89,7 @@ else
 fi
 
 # Pulisce eventuali file temporanei di Hive e file nascosti .crc
-rm -f "${OUTPUT_DIR}"/000000_*
+rm -rf "${RAW_DIR}"
 rm -f "${OUTPUT_DIR}"/.*.crc
 
 echo "End: $(date)"
