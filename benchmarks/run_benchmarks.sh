@@ -73,6 +73,13 @@ for analysis in $ANALYSES; do
         continue
     fi
 
+    # Mappa l'analisi alla directory
+    case $analysis in
+        3.1) dir="analysis_1_airline_stats" ;;
+        3.2) dir="analysis_2_delay_report"  ;;
+        3.3) dir="analysis_3_ranking"       ;;
+    esac
+
     for tech in $techs; do
         script="${SCRIPTS[$analysis:$tech]}"
         if [ -z "$script" ]; then
