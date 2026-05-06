@@ -22,7 +22,9 @@ conf = SparkConf() \
     .setMaster("local[*]") \
     .set("spark.driver.memory", "4g")
 
-sc = SparkContext(conf=conf)
+from pyspark.sql import SparkSession
+spark = SparkSession.builder.config(conf=conf).getOrCreate()
+sc = spark.sparkContext
 sc.setLogLevel("WARN")
 
 print(f"Spark versione: {sc.version}")
@@ -30,42 +32,14 @@ print(f"Input: {INPUT_PATH}")
 
 start = time.time()
 
-# ─── 1. Parsing ───────────────────────────────────────────────────────────────
-raw    = sc.textFile(INPUT_PATH)
-header = raw.first()
-
-def parse_line(line):
-    fields = line.split(",")
-    if len(fields) < 15:
-        return None
-    try:
-        origin    = fields[4].strip()
-        month     = int(fields[2].strip())
-        # FIX: dep/arr_delay → None se mancanti (non 0.0)
-        def to_float_or_none(s):
-            s = s.strip()
-            return float(s) if s not in ("", "nan", "NA") else None
-        dep_delay = to_float_or_none(fields[6])
-        arr_delay = to_float_or_none(fields[7])
-        # cause: 0.0 è corretto (volo senza quella causa di ritardo)
-        def to_float_zero(s):
-            s = s.strip()
-            return float(s) if s not in ("", "nan", "NA") else 0.0
-        carrier_d  = to_float_zero(fields[10])
-        weather_d  = to_float_zero(fields[11])
-        nas_d      = to_float_zero(fields[12])
-        security_d = to_float_zero(fields[13])
-        late_d     = to_float_zero(fields[14])
-        if not origin or not month:
-            return None
-        return (origin, month, dep_delay, arr_delay, carrier_d, weather_d, nas_d, security_d, late_d)
-    except (ValueError, IndexError):
-        return None
-
-records = raw \
-    .filter(lambda line: line != header) \
-    .map(parse_line) \
-    .filter(lambda x: x is not None)
+# ─── 1. Caricamento Parquet ───────────────────────────────────────────────────
+# Leggiamo il Parquet e lo convertiamo in RDD di tuple per mantenere la logica esistente
+df = spark.read.parquet(INPUT_PATH)
+records = df.rdd.map(lambda r: (
+    r.origin, r.month, r.dep_delay, r.arr_delay, 
+    r.carrier_delay, r.weather_delay, r.nas_delay, 
+    r.security_delay, r.late_aircraft_delay
+))
 
 records.cache()
 

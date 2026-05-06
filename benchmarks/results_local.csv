@@ -1,1 +1,2 @@
 timestamp,analysis,technology,environment,input_file,input_size_mb,input_rows,elapsed_sec,exit_code,notes
+2026-05-06 15:15:14,3.1,hive,local,data/samples/sample_010pct.parquet,5.75,703885,115.51,0,sample_010pct_parquet

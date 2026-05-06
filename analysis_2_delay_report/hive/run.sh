@@ -1,6 +1,7 @@
 #!/bin/bash
 # ─── Analisi 3.2 — Hive ──────────────────────────────────────────────────────
 set -e
+set -o pipefail
 
 INPUT="${BENCHMARK_INPUT:-data/cleaned/flight_data_2024_cleaned.csv}"
 INPUT_FILENAME=$(basename "$INPUT")
@@ -16,10 +17,10 @@ START=$(date +%s)
 
 mkdir -p "$OUTPUT_DIR"
 
-# ─── Carica CSV su HDFS ──────────────────────────────────────────────────────
-echo "Caricamento CSV su HDFS..."
-hadoop fs -mkdir -p "$HDFS_DIR" 2>/dev/null
-hadoop fs -put -f "$INPUT" "$HDFS_DIR/" 2>/dev/null
+# ─── Carica Parquet su HDFS ───────────────────────────────────────────────────
+echo "Caricamento Parquet su HDFS..."
+hadoop fs -rm -r "$HDFS_DIR" 2>/dev/null || true
+hadoop fs -put -f "$INPUT" "$HDFS_DIR" 2>/dev/null
 
 # ─── Ricrea la tabella Hive ───────────────────────────────────────────────────
 hive -e "
@@ -33,11 +34,9 @@ CREATE EXTERNAL TABLE flights_clean (
     carrier_delay DOUBLE, weather_delay DOUBLE, nas_delay DOUBLE,
     security_delay DOUBLE, late_aircraft_delay DOUBLE
 )
-ROW FORMAT DELIMITED FIELDS TERMINATED BY ','
-STORED AS TEXTFILE
-LOCATION '${HDFS_DIR}'
-TBLPROPERTIES ('skip.header.line.count'='1');
-" 2>/dev/null
+STORED AS PARQUET
+LOCATION '${HDFS_DIR}';
+"
 
 # ─── Esegui HQL ──────────────────────────────────────────────────────────────
 echo "Esecuzione query Hive..."

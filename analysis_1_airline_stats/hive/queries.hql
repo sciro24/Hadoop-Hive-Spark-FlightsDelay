@@ -13,7 +13,7 @@ CREATE EXTERNAL TABLE flights_clean (
     dest                STRING,
     dep_delay           DOUBLE,
     arr_delay           DOUBLE,
-    cancelled           INT,
+    cancelled           DOUBLE,
     cancellation_code   STRING,
     carrier_delay       DOUBLE,
     weather_delay       DOUBLE,
@@ -21,11 +21,8 @@ CREATE EXTERNAL TABLE flights_clean (
     security_delay      DOUBLE,
     late_aircraft_delay DOUBLE
 )
-ROW FORMAT DELIMITED
-FIELDS TERMINATED BY ','
-STORED AS TEXTFILE
-LOCATION '/user/hive/warehouse/flights_clean'
-TBLPROPERTIES ("skip.header.line.count"="1");
+STORED AS PARQUET
+LOCATION '/user/hive/warehouse/flights_clean';
 
 DROP TABLE IF EXISTS results_airline_stats;
 

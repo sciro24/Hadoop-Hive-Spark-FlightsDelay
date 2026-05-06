@@ -32,7 +32,7 @@ print(f"Input: {INPUT_PATH}")
 start = time.time()
 
 # ─── Caricamento ──────────────────────────────────────────────────────────────
-df = spark.read.csv(INPUT_PATH, header=True, inferSchema=True)
+df = spark.read.parquet(INPUT_PATH)
 df.createOrReplaceTempView("flights")
 print(f"Righe caricate: {df.count():,}")
 

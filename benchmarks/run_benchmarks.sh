@@ -82,10 +82,15 @@ for analysis in $ANALYSES; do
 
         # ── Ordine: 010 → 025 → 050 → full(100%) → 125 → 150 ────────────────
         for pct in "010pct" "025pct" "050pct"; do
-            input="${SAMPLES_DIR}/sample_${pct}.csv"
-            if [ ! -f "$input" ]; then echo "❌  $input non trovato, skip."; continue; fi
+            # Seleziona estensione in base alla tecnologia
+            ext="parquet"
+            if [ "$tech" == "mapreduce" ]; then ext="csv"; fi
+            
+            input="${SAMPLES_DIR}/sample_${pct}.${ext}"
+            if [ ! -d "$input" ] && [ ! -f "$input" ]; then echo "❌  $input non trovato, skip."; continue; fi
+            
             echo ""
-            echo "▶  Analisi ${analysis} | ${tech} | sample ${pct}"
+            echo "▶  Analisi ${analysis} | ${tech} | sample ${pct} (${ext})"
             echo "   Input: $input"
             export BENCHMARK_INPUT="$input"
             $TRACKER \
@@ -97,23 +102,32 @@ for analysis in $ANALYSES; do
         done
 
         # ── Full dataset 100% ─────────────────────────────────────────────────
+        ext="parquet"
+        if [ "$tech" == "mapreduce" ]; then ext="csv"; fi
+        
+        input_full="${CLEANED%.csv}.${ext}"
+        
         echo ""
-        echo "▶  Analisi ${analysis} | ${tech} | 100% (cleaned)"
-        echo "   Input: $CLEANED"
-        export BENCHMARK_INPUT="$CLEANED"
+        echo "▶  Analisi ${analysis} | ${tech} | 100% (${ext})"
+        echo "   Input: $input_full"
+        export BENCHMARK_INPUT="$input_full"
         $TRACKER \
             --analysis "$analysis" --tech "$tech" \
-            --input    "$CLEANED"  --cmd  "$script" \
+            --input    "$input_full"  --cmd  "$script" \
             --notes    "full_dataset" \
         && TOTAL_JOBS=$((TOTAL_JOBS + 1)) \
         || { FAILED_JOBS=$((FAILED_JOBS + 1)); TOTAL_JOBS=$((TOTAL_JOBS + 1)); }
 
         # ── 125% e 150% ───────────────────────────────────────────────────────
         for pct in "125pct" "150pct"; do
-            input="${SAMPLES_DIR}/sample_${pct}.csv"
-            if [ ! -f "$input" ]; then echo "❌  $input non trovato, skip."; continue; fi
+            ext="parquet"
+            if [ "$tech" == "mapreduce" ]; then ext="csv"; fi
+            
+            input="${SAMPLES_DIR}/sample_${pct}.${ext}"
+            if [ ! -d "$input" ] && [ ! -f "$input" ]; then echo "❌  $input non trovato, skip."; continue; fi
+            
             echo ""
-            echo "▶  Analisi ${analysis} | ${tech} | sample ${pct}"
+            echo "▶  Analisi ${analysis} | ${tech} | sample ${pct} (${ext})"
             echo "   Input: $input"
             export BENCHMARK_INPUT="$input"
             $TRACKER \

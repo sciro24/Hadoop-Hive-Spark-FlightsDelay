@@ -29,13 +29,36 @@ FIELDNAMES   = [
     "elapsed_sec", "exit_code", "notes"
 ]
 
+import pyarrow.parquet as pq
+
 def get_file_info(filepath: str):
     p = Path(filepath)
     if not p.exists():
-        return 0.0, "N/A"
-    size_mb = round(p.stat().st_size / (1024 * 1024), 2)
-    with open(p, "rb") as f:
-        rows = sum(1 for _ in f) - 1
+        return 0.0, 0
+    
+    if p.is_dir():
+        # Caso Parquet (Directory)
+        size_bytes = sum(f.stat().st_size for f in p.rglob('*') if f.is_file())
+        size_mb = round(size_bytes / (1024 * 1024), 2)
+        try:
+            # Usa ParquetDataset per sommare i metadati di tutti i file nella directory
+            dataset = pq.ParquetDataset(p)
+            rows = dataset.metadata.num_rows
+        except:
+            try:
+                # Fallback manuale se Dataset fallisce: somma le righe di ogni file .parquet
+                rows = sum(pq.read_metadata(f).num_rows for f in p.rglob('*.parquet') if f.is_file())
+            except:
+                rows = "N/A"
+    else:
+        # Caso CSV (File singolo)
+        size_mb = round(p.stat().st_size / (1024 * 1024), 2)
+        try:
+            with open(p, "rb") as f:
+                rows = sum(1 for _ in f) - 1
+        except:
+            rows = "N/A"
+            
     return size_mb, rows
 
 def load_results() -> list[dict]:
@@ -76,7 +99,8 @@ def run(analysis, tech, input_file, cmd, env="local", notes=""):
     print(f"{'='*60}\n")
 
     size_mb, n_rows = get_file_info(input_file)
-    print(f"  Input: {size_mb} MB | {n_rows:,} righe\n")
+    rows_display = f"{n_rows:,}" if isinstance(n_rows, int) else n_rows
+    print(f"  Input: {size_mb} MB | {rows_display} righe\n")
 
     start = time.time()
     result = subprocess.run(cmd, shell=True)

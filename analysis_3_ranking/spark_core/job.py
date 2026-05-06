@@ -32,7 +32,9 @@ conf = SparkConf() \
     .setMaster("local[*]") \
     .set("spark.driver.memory", "4g")
 
-sc = SparkContext(conf=conf)
+from pyspark.sql import SparkSession
+spark = SparkSession.builder.config(conf=conf).getOrCreate()
+sc = spark.sparkContext
 sc.setLogLevel("WARN")
 
 print(f"Spark versione: {sc.version}")
@@ -41,32 +43,12 @@ print(f"Input: {INPUT_PATH}")
 start = time.time()
 
 
-# ─── 1. Caricamento e parsing ─────────────────────────────────────────────────
-raw    = sc.textFile(INPUT_PATH)
-header = raw.first()
-
-
-def parse_line(line):
-    fields = line.split(",")
-    if len(fields) < 9:
-        return None
-    try:
-        carrier   = fields[3].strip()
-        origin    = fields[4].strip()
-        dep_delay = float(fields[6].strip()) if fields[6].strip() not in ("", "nan", "NA") else 0.0
-        arr_delay = float(fields[7].strip()) if fields[7].strip() not in ("", "nan", "NA") else 0.0
-        cancelled = float(fields[8].strip()) if fields[8].strip() not in ("", "nan", "NA") else 0.0
-        if not carrier or not origin:
-            return None
-        return (origin, carrier, dep_delay, arr_delay, cancelled)
-    except (ValueError, IndexError):
-        return None
-
-
-records = raw \
-    .filter(lambda line: line != header) \
-    .map(parse_line) \
-    .filter(lambda x: x is not None)
+# ─── 1. Caricamento e parsing Parquet ─────────────────────────────────────────
+df = spark.read.parquet(INPUT_PATH)
+# Convertiamo in RDD di tuple: (origin, carrier, dep_delay, arr_delay, cancelled)
+records = df.rdd.map(lambda r: (
+    r.origin, r.op_unique_carrier, r.dep_delay, r.arr_delay, r.cancelled
+))
 
 records.cache()
 
