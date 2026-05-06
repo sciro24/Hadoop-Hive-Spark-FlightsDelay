@@ -92,7 +92,7 @@ final_rdd = bands_rdd.join(causes_pivoted_rdd) \
     .map(lambda x: (x[0][0], x[0][1], x[1][0][0], x[1][0][1], x[1][0][2], x[1][0][3], x[1][1][0], x[1][1][1], x[1][1][2]))
 
 # Schema finale: origin, month, band, num, avg_dep, avg_arr, cause1, cause2, cause3
-final_df = spark.createDataFrame(final_rdd, ["origin", "month", "delay_band", "num_flights", "avg_dep", "avg_arr", "cause_1", "cause_2", "cause_3"])
+final_df = spark.createDataFrame(final_rdd, ["origin", "month", "delay_band", "num_flights", "avg_dep", "avg_arr", "top_cause_1", "top_cause_2", "top_cause_3"])
 
 final_df.coalesce(1).write.mode("overwrite") \
     .option("header", "true") \

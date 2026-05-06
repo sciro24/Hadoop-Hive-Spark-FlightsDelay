@@ -80,8 +80,9 @@ else
     exit 1
 fi
 
-# Pulisce eventuali file temporanei di Hive
+# Pulisce eventuali file temporanei di Hive e file nascosti .crc
 rm -f "${OUTPUT_DIR}"/000000_*
+rm -f "${OUTPUT_DIR}"/.*.crc
 
 echo "End: $(date)"
 echo "Tempo di esecuzione: $(( $(date +%s) - START ))s"

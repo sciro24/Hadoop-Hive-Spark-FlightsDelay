@@ -5,13 +5,13 @@ timestamp,analysis,technology,environment,input_file,input_size_mb,input_rows,el
 2026-05-06 15:22:52,3.1,mapreduce,local,data/cleaned/flight_data_2024_cleaned.csv,353.89,7038851,40.56,0,full_dataset
 2026-05-06 15:23:37,3.1,mapreduce,local,data/samples/sample_125pct.csv,442.36,8798563,43.45,0,sample_125pct
 2026-05-06 15:24:26,3.1,mapreduce,local,data/samples/sample_150pct.csv,530.84,10558276,48.14,0,sample_150pct
-2026-05-06 17:09:57,3.1,hive,local,data/samples/sample_010pct.parquet,5.75,703885,109.11,0,row_count_verify
+2026-05-06 17:32:55,3.1,hive,local,data/samples/sample_010pct.parquet,5.75,703885,112.82,0,
 2026-05-06 15:28:16,3.1,hive,local,data/samples/sample_025pct.parquet,14.51,1759713,111.08,0,sample_025pct
 2026-05-06 15:30:07,3.1,hive,local,data/samples/sample_050pct.parquet,29.14,3519426,110.47,0,sample_050pct
 2026-05-06 15:31:59,3.1,hive,local,data/cleaned/flight_data_2024_cleaned.parquet,43.02,7038851,111.6,0,full_dataset
 2026-05-06 15:33:59,3.1,hive,local,data/samples/sample_125pct.parquet,57.66,8798563,120.15,0,sample_125pct
 2026-05-06 15:36:01,3.1,hive,local,data/samples/sample_150pct.parquet,72.3,10558276,120.75,0,sample_150pct
-2026-05-06 15:36:12,3.1,spark_sql,local,data/samples/sample_010pct.parquet,5.75,703885,10.09,0,sample_010pct
+2026-05-06 17:31:02,3.1,spark_sql,local,data/samples/sample_010pct.parquet,5.75,703885,10.15,0,
 2026-05-06 15:36:23,3.1,spark_sql,local,data/samples/sample_025pct.parquet,14.51,1759713,10.83,0,sample_025pct
 2026-05-06 15:36:38,3.1,spark_sql,local,data/samples/sample_050pct.parquet,29.14,3519426,14.3,0,sample_050pct
 2026-05-06 15:36:57,3.1,spark_sql,local,data/cleaned/flight_data_2024_cleaned.parquet,43.02,7038851,18.79,0,full_dataset
