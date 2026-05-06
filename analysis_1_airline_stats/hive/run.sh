@@ -95,4 +95,4 @@ echo "Tempo di esecuzione: $((END - START))s"
 
 echo ""
 echo "=== Prime 10 righe ==="
-head -10 "$OUTPUT_DIR/output.csv"
+if [ -f "$OUTPUT_DIR/output.csv" ]; then head -n 10 "$OUTPUT_DIR/output.csv"; fi

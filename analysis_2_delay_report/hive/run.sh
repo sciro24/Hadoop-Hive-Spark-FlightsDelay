@@ -92,4 +92,4 @@ echo "Tempo di esecuzione: $(( $(date +%s) - START ))s"
 # ─── Anteprima ────────────────────────────────────────────────────────────────
 echo ""
 echo "=== Prime 10 righe ==="
-head -n 10 "${OUTPUT_DIR}/output.csv"
+if [ -f "${OUTPUT_DIR}/output.csv" ]; then head -n 10 "${OUTPUT_DIR}/output.csv"; fi
