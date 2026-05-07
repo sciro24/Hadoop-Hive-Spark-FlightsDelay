@@ -129,6 +129,7 @@ For each `(origin, carrier)`: performance metrics compared against the airport a
 | Apache Hive | 2.3.9 | Parquet |
 | Spark Core | 3.5.8 | Parquet |
 | Spark SQL | 3.5.8 | Parquet |
+
 All jobs support both **local** and **cluster** mode via the `CLUSTER_MODE=true` environment variable. Output is routed to S3 automatically when running on cluster.
 
 ---
