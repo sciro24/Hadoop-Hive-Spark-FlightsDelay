@@ -22,7 +22,7 @@ CREATE EXTERNAL TABLE flights_clean (
     late_aircraft_delay DOUBLE
 )
 STORED AS PARQUET
-LOCATION '/user/hive/warehouse/flights_clean';
+LOCATION '${hivevar:DATA_LOCATION}';
 
 DROP TABLE IF EXISTS results_airline_stats;
 

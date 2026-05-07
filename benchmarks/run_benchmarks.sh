@@ -11,9 +11,24 @@ export HADOOP_OPTS="-Dlog4j.rootLogger=ERROR,console \
 export HIVE_OPTS="--hiveconf hive.root.logger=ERROR,console $HIVE_OPTS"
 
 # ─── Configurazione ───────────────────────────────────────────────────────────
+# In modalità cluster: CLUSTER_MODE=true, S3_BUCKET e S3_PREFIX devono essere impostati
+# Il benchmark runner usa automaticamente results_cluster.csv quando ENV=cluster
+ENV="${CLUSTER_MODE:+cluster}"
+ENV="${ENV:-local}"
+
 TRACKER="python3 benchmarks/benchmark_tracker.py"
-SAMPLES_DIR="data/samples"
-CLEANED="data/cleaned/flight_data_2024_cleaned.csv"
+
+if [ "$ENV" = "cluster" ]; then
+    S3_BUCKET="${S3_BUCKET:?Imposta S3_BUCKET}"
+    S3_PREFIX="${S3_PREFIX:-flights-delay}"
+    SAMPLES_DIR="s3://${S3_BUCKET}/${S3_PREFIX}/data/samples"
+    CLEANED="s3://${S3_BUCKET}/${S3_PREFIX}/data/cleaned/flight_data_2024_cleaned.csv"
+    export S3_OUTPUT_BASE="s3://${S3_BUCKET}/${S3_PREFIX}/results"
+    export CLUSTER_MODE="true"
+else
+    SAMPLES_DIR="data/samples"
+    CLEANED="data/cleaned/flight_data_2024_cleaned.csv"
+fi
 
 declare -A SAMPLE_FRACS
 SAMPLE_FRACS["010pct"]="0.10"
@@ -51,15 +66,17 @@ echo ""
 
 mkdir -p logs
 
-# Genera i sample se non esistono
-for pct in "010pct" "025pct" "050pct" "125pct" "150pct"; do
-    sample_file="${SAMPLES_DIR}/sample_${pct}.csv"
-    if [ ! -f "$sample_file" ]; then
-        echo "⚠️  Sample ${pct} non trovato, lo genero..."
-        python3 data_preparation/generate_samples.py \
-            --fractions "${SAMPLE_FRACS[$pct]}"
-    fi
-done
+# Genera i sample solo in locale (in cluster mode sono già su S3)
+if [ "$ENV" != "cluster" ]; then
+    for pct in "010pct" "025pct" "050pct" "125pct" "150pct"; do
+        sample_file="${SAMPLES_DIR}/sample_${pct}.csv"
+        if [ ! -f "$sample_file" ]; then
+            echo "⚠️  Sample ${pct} non trovato, lo genero..."
+            python3 data_preparation/generate_samples.py \
+                --fractions "${SAMPLE_FRACS[$pct]}"
+        fi
+    done
+fi
 
 TOTAL_JOBS=0
 FAILED_JOBS=0
@@ -89,21 +106,25 @@ for analysis in $ANALYSES; do
 
         # ── Ordine: 010 → 025 → 050 → full(100%) → 125 → 150 ────────────────
         for pct in "010pct" "025pct" "050pct"; do
-            # Seleziona estensione in base alla tecnologia
             ext="parquet"
             if [ "$tech" == "mapreduce" ]; then ext="csv"; fi
-            
-            input="${SAMPLES_DIR}/sample_${pct}.${ext}"
-            if [ ! -d "$input" ] && [ ! -f "$input" ]; then echo "❌  $input non trovato, skip."; continue; fi
-            
+
+            if [ "$ENV" = "cluster" ]; then
+                input="${SAMPLES_DIR}/sample_${pct}.${ext}"
+            else
+                input="${SAMPLES_DIR}/sample_${pct}.${ext}"
+                if [ ! -d "$input" ] && [ ! -f "$input" ]; then echo "❌  $input non trovato, skip."; continue; fi
+            fi
+
             echo ""
-            echo "▶  Analisi ${analysis} | ${tech} | sample ${pct} (${ext})"
+            echo "▶  Analisi ${analysis} | ${tech} | sample ${pct} (${ext}) | env: ${ENV}"
             echo "   Input: $input"
             export BENCHMARK_INPUT="$input"
+            [ "$ENV" = "cluster" ] && export DATA_LOCATION="$input"
             $TRACKER \
                 --analysis "$analysis" --tech "$tech" \
                 --input    "$input"    --cmd  "$script" \
-                --notes    "sample_${pct}" \
+                --env      "$ENV"      --notes "sample_${pct}" \
             && TOTAL_JOBS=$((TOTAL_JOBS + 1)) \
             || { FAILED_JOBS=$((FAILED_JOBS + 1)); TOTAL_JOBS=$((TOTAL_JOBS + 1)); }
         done
@@ -111,17 +132,25 @@ for analysis in $ANALYSES; do
         # ── Full dataset 100% ─────────────────────────────────────────────────
         ext="parquet"
         if [ "$tech" == "mapreduce" ]; then ext="csv"; fi
-        
-        input_full="${CLEANED%.csv}.${ext}"
-        
+
+        if [ "$ENV" = "cluster" ]; then
+            input_full="${CLEANED%.csv}.${ext}"
+            # Per MapReduce su cluster il CSV cleaned è già caricato su S3
+            [ "$tech" = "mapreduce" ] && input_full="$CLEANED"
+        else
+            input_full="${CLEANED%.csv}.${ext}"
+            [ "$tech" = "mapreduce" ] && input_full="$CLEANED"
+        fi
+
         echo ""
-        echo "▶  Analisi ${analysis} | ${tech} | 100% (${ext})"
+        echo "▶  Analisi ${analysis} | ${tech} | 100% (${ext}) | env: ${ENV}"
         echo "   Input: $input_full"
         export BENCHMARK_INPUT="$input_full"
+        [ "$ENV" = "cluster" ] && export DATA_LOCATION="$input_full"
         $TRACKER \
             --analysis "$analysis" --tech "$tech" \
             --input    "$input_full"  --cmd  "$script" \
-            --notes    "full_dataset" \
+            --env      "$ENV"         --notes "full_dataset" \
         && TOTAL_JOBS=$((TOTAL_JOBS + 1)) \
         || { FAILED_JOBS=$((FAILED_JOBS + 1)); TOTAL_JOBS=$((TOTAL_JOBS + 1)); }
 
@@ -129,18 +158,23 @@ for analysis in $ANALYSES; do
         for pct in "125pct" "150pct"; do
             ext="parquet"
             if [ "$tech" == "mapreduce" ]; then ext="csv"; fi
-            
-            input="${SAMPLES_DIR}/sample_${pct}.${ext}"
-            if [ ! -d "$input" ] && [ ! -f "$input" ]; then echo "❌  $input non trovato, skip."; continue; fi
-            
+
+            if [ "$ENV" = "cluster" ]; then
+                input="${SAMPLES_DIR}/sample_${pct}.${ext}"
+            else
+                input="${SAMPLES_DIR}/sample_${pct}.${ext}"
+                if [ ! -d "$input" ] && [ ! -f "$input" ]; then echo "❌  $input non trovato, skip."; continue; fi
+            fi
+
             echo ""
-            echo "▶  Analisi ${analysis} | ${tech} | sample ${pct} (${ext})"
+            echo "▶  Analisi ${analysis} | ${tech} | sample ${pct} (${ext}) | env: ${ENV}"
             echo "   Input: $input"
             export BENCHMARK_INPUT="$input"
+            [ "$ENV" = "cluster" ] && export DATA_LOCATION="$input"
             $TRACKER \
                 --analysis "$analysis" --tech "$tech" \
                 --input    "$input"    --cmd  "$script" \
-                --notes    "sample_${pct}" \
+                --env      "$ENV"      --notes "sample_${pct}" \
             && TOTAL_JOBS=$((TOTAL_JOBS + 1)) \
             || { FAILED_JOBS=$((FAILED_JOBS + 1)); TOTAL_JOBS=$((TOTAL_JOBS + 1)); }
         done
@@ -165,6 +199,6 @@ printf  "║  Job totali:   %-40s ║\n" "$TOTAL_JOBS"
 printf  "║  Successi:     %-40s ║\n" "$((TOTAL_JOBS - FAILED_JOBS))"
 printf  "║  Falliti:      %-40s ║\n" "$FAILED_JOBS"
 printf  "║  Tempo totale: %-40s ║\n" "${ELAPSED_ALL}s (~$((ELAPSED_ALL/60))min)"
-printf  "║  Risultati:    %-40s ║\n" "benchmarks/results_local.csv"
+printf  "║  Risultati:    %-40s ║\n" "benchmarks/results_${ENV}.csv"
 echo "╚══════════════════════════════════════════════════════════╝"
 echo ""

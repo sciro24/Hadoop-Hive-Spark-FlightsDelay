@@ -9,31 +9,33 @@ import glob
 import shutil
 import time
 from pathlib import Path
-from pyspark import SparkContext, SparkConf
+from pyspark.sql import SparkSession
 
+CLUSTER_MODE   = os.environ.get("CLUSTER_MODE", "false").lower() == "true"
+S3_OUTPUT_BASE = os.environ.get("S3_OUTPUT_BASE", "")
 
 # ─── Paths ────────────────────────────────────────────────────────────────────
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 INPUT_PATH   = sys.argv[1] if len(sys.argv) > 1 else str(PROJECT_ROOT / "data" / "cleaned" / "flight_data_2024_cleaned.parquet")
-OUTPUT_PATH  = str(PROJECT_ROOT / "results" / "analysis_3" / "spark_core")
-os.makedirs(OUTPUT_PATH, exist_ok=True)
 
+if CLUSTER_MODE and S3_OUTPUT_BASE:
+    OUTPUT_PATH = f"{S3_OUTPUT_BASE}/analysis_3/spark_core"
+else:
+    OUTPUT_PATH = str(PROJECT_ROOT / "results" / "analysis_3" / "spark_core")
+    os.makedirs(OUTPUT_PATH, exist_ok=True)
 
-# ─── Pulizia output precedente ────────────────────────────────────────────────
-ranking_raw = os.path.join(OUTPUT_PATH, "ranking_raw")
-if os.path.exists(ranking_raw):
-    shutil.rmtree(ranking_raw)
-    print(f"Rimossa directory precedente: {ranking_raw}")
+# ─── Pulizia output precedente (solo in locale) ───────────────────────────────
+if not CLUSTER_MODE:
+    ranking_raw = os.path.join(OUTPUT_PATH, "ranking_raw")
+    if os.path.exists(ranking_raw):
+        shutil.rmtree(ranking_raw)
+        print(f"Rimossa directory precedente: {ranking_raw}")
 
-
-# ─── SparkContext ─────────────────────────────────────────────────────────────
-conf = SparkConf() \
-    .setAppName("Analysis_3.3_Ranking_SparkCore") \
-    .setMaster("local[*]") \
-    .set("spark.driver.memory", "4g")
-
-from pyspark.sql import SparkSession
-spark = SparkSession.builder.config(conf=conf).getOrCreate()
+# ─── SparkSession ─────────────────────────────────────────────────────────────
+builder = SparkSession.builder.appName("Analysis_3.3_Ranking_SparkCore")
+if not CLUSTER_MODE:
+    builder = builder.master("local[*]").config("spark.driver.memory", "4g")
+spark = builder.getOrCreate()
 sc = spark.sparkContext
 sc.setLogLevel("WARN")
 
@@ -114,19 +116,27 @@ result = by_airport.sortBy(lambda x: (x[0], x[8]))
 out = result.map(lambda x:
     f"{x[0]}|{x[1]}|{x[2]}|{x[3]}|{x[4]}|{x[5]}|{x[6]}|{x[7]}|{x[8]}"
 )
-out.coalesce(1).saveAsTextFile(f"{OUTPUT_PATH}/ranking_raw")
-
-parts = glob.glob(f"{OUTPUT_PATH}/ranking_raw/part-*")
-if parts and "cleaned" in INPUT_PATH:
-    print("Dataset completo rilevato. Aggiornamento output.csv...")
-    with open(f"{OUTPUT_PATH}/output.csv", "w") as fout:
-        fout.write("origin|carrier|num_flights|avg_dep_delay|avg_arr_delay|cancel_rate|avg_dep_airport|dep_diff|rank\n")
-        with open(parts[0], "r") as fin:
-            shutil.copyfileobj(fin, fout)
-elif parts:
-    print(f"Dataset sample rilevato. Salto aggiornamento {OUTPUT_PATH}/output.csv")
-
-shutil.rmtree(f"{OUTPUT_PATH}/ranking_raw", ignore_errors=True)
+if CLUSTER_MODE:
+    schema = ["origin", "carrier", "num_flights", "avg_dep_delay", "avg_arr_delay",
+              "cancel_rate", "avg_dep_airport", "dep_diff", "rank"]
+    result_df = spark.createDataFrame(result, schema)
+    result_df.coalesce(1).write.mode("overwrite") \
+        .option("header", "true") \
+        .option("delimiter", "|") \
+        .csv(OUTPUT_PATH)
+    print(f"Risultati salvati in: {OUTPUT_PATH}")
+else:
+    out.coalesce(1).saveAsTextFile(f"{OUTPUT_PATH}/ranking_raw")
+    parts = glob.glob(f"{OUTPUT_PATH}/ranking_raw/part-*")
+    if parts and "cleaned" in INPUT_PATH:
+        print("Dataset completo rilevato. Aggiornamento output.csv...")
+        with open(f"{OUTPUT_PATH}/output.csv", "w") as fout:
+            fout.write("origin|carrier|num_flights|avg_dep_delay|avg_arr_delay|cancel_rate|avg_dep_airport|dep_diff|rank\n")
+            with open(parts[0], "r") as fin:
+                shutil.copyfileobj(fin, fout)
+    elif parts:
+        print(f"Dataset sample rilevato. Salto aggiornamento {OUTPUT_PATH}/output.csv")
+    shutil.rmtree(f"{OUTPUT_PATH}/ranking_raw", ignore_errors=True)
 
 elapsed = round(time.time() - start, 2)
 print(f"\nTempo di esecuzione: {elapsed}s")

@@ -7,18 +7,24 @@ import os, sys, time, glob, shutil
 from pathlib import Path
 from pyspark.sql import SparkSession
 
+CLUSTER_MODE   = os.environ.get("CLUSTER_MODE", "false").lower() == "true"
+S3_OUTPUT_BASE = os.environ.get("S3_OUTPUT_BASE", "")
+
 # ─── Paths ────────────────────────────────────────────────────────────────────
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 INPUT_PATH   = sys.argv[1] if len(sys.argv) > 1 else str(PROJECT_ROOT / "data" / "cleaned" / "flight_data_2024_cleaned.parquet")
-OUTPUT_PATH  = str(PROJECT_ROOT / "results" / "analysis_2" / "spark_core")
-os.makedirs(OUTPUT_PATH, exist_ok=True)
+
+if CLUSTER_MODE and S3_OUTPUT_BASE:
+    OUTPUT_PATH = f"{S3_OUTPUT_BASE}/analysis_2/spark_core"
+else:
+    OUTPUT_PATH = str(PROJECT_ROOT / "results" / "analysis_2" / "spark_core")
+    os.makedirs(OUTPUT_PATH, exist_ok=True)
 
 # ─── SparkSession ─────────────────────────────────────────────────────────────
-spark = SparkSession.builder \
-    .appName("Analysis_3.2_DelayReport_SparkCore") \
-    .master("local[*]") \
-    .config("spark.driver.memory", "4g") \
-    .getOrCreate()
+builder = SparkSession.builder.appName("Analysis_3.2_DelayReport_SparkCore")
+if not CLUSTER_MODE:
+    builder = builder.master("local[*]").config("spark.driver.memory", "4g")
+spark = builder.getOrCreate()
 
 sc = spark.sparkContext
 sc.setLogLevel("WARN")
@@ -87,20 +93,26 @@ final_rdd = bands_rdd.leftOuterJoin(causes_pivoted_rdd) \
 # Schema finale: origin, month, band, num, avg_dep, avg_arr, cause1, cause2, cause3
 final_df = spark.createDataFrame(final_rdd, ["origin", "month", "delay_band", "num_flights", "avg_dep", "avg_arr", "top_cause_1", "top_cause_2", "top_cause_3"])
 
-final_df.orderBy("origin", "month", "delay_band") \
-    .coalesce(1).write.mode("overwrite") \
-    .option("header", "true") \
-    .option("delimiter", "|") \
-    .csv(os.path.join(OUTPUT_PATH, "temp"))
-
-parts = glob.glob(os.path.join(OUTPUT_PATH, "temp", "part-*.csv"))
-if parts and "cleaned" in INPUT_PATH:
-    shutil.copy(parts[0], os.path.join(OUTPUT_PATH, "output.csv"))
-    print(f"Dataset completo rilevato. Risultati salvati in {OUTPUT_PATH}/output.csv")
-elif parts:
-    print(f"Dataset sample rilevato. Salto aggiornamento {OUTPUT_PATH}/output.csv")
-
-shutil.rmtree(os.path.join(OUTPUT_PATH, "temp"), ignore_errors=True)
+if CLUSTER_MODE:
+    final_df.orderBy("origin", "month", "delay_band") \
+        .coalesce(1).write.mode("overwrite") \
+        .option("header", "true") \
+        .option("delimiter", "|") \
+        .csv(OUTPUT_PATH)
+    print(f"Risultati salvati in: {OUTPUT_PATH}")
+else:
+    final_df.orderBy("origin", "month", "delay_band") \
+        .coalesce(1).write.mode("overwrite") \
+        .option("header", "true") \
+        .option("delimiter", "|") \
+        .csv(os.path.join(OUTPUT_PATH, "temp"))
+    parts = glob.glob(os.path.join(OUTPUT_PATH, "temp", "part-*.csv"))
+    if parts and "cleaned" in INPUT_PATH:
+        shutil.copy(parts[0], os.path.join(OUTPUT_PATH, "output.csv"))
+        print(f"Dataset completo rilevato. Risultati salvati in {OUTPUT_PATH}/output.csv")
+    elif parts:
+        print(f"Dataset sample rilevato. Salto aggiornamento {OUTPUT_PATH}/output.csv")
+    shutil.rmtree(os.path.join(OUTPUT_PATH, "temp"), ignore_errors=True)
 
 elapsed = round(time.time() - start, 2)
 print(f"\nTempo di esecuzione: {elapsed}s")

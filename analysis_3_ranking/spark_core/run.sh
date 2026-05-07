@@ -2,19 +2,27 @@
 # ─── Analisi 3.3 — Spark Core ────────────────────────────────────────────────
 set -e
 
-# Usa il sample passato dal benchmark runner, altrimenti il cleaned completo
-INPUT="${BENCHMARK_INPUT:-data/cleaned/flight_data_2024_cleaned.csv}"
+INPUT="${BENCHMARK_INPUT:-data/cleaned/flight_data_2024_cleaned.parquet}"
 
 echo "=== Analisi 3.3 — Spark Core ==="
 echo "Input: $INPUT"
 echo "Start: $(date)"
 START=$(date +%s)
 
-spark-submit \
-    --master local[*] \
-    --driver-memory 4g \
-    --conf spark.sql.shuffle.partitions=8 \
-    analysis_3_ranking/spark_core/job.py "$INPUT"   
+if [ "${CLUSTER_MODE:-false}" = "true" ]; then
+    spark-submit \
+        --deploy-mode client \
+        --executor-memory "${EXECUTOR_MEMORY:-4g}" \
+        --executor-cores  "${EXECUTOR_CORES:-2}" \
+        --num-executors   "${NUM_EXECUTORS:-4}" \
+        analysis_3_ranking/spark_core/job.py "$INPUT"
+else
+    spark-submit \
+        --master "local[*]" \
+        --driver-memory 4g \
+        --conf spark.sql.shuffle.partitions=8 \
+        analysis_3_ranking/spark_core/job.py "$INPUT"
+fi
 
 END=$(date +%s)
 echo "End: $(date)"

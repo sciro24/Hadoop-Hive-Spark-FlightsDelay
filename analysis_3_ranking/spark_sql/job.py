@@ -4,26 +4,34 @@ Analisi 3.3 — Ranking coppie compagnia-aeroporto
 Tecnologia: Spark SQL 3.5.8
 """
 import os
+import sys
 import glob
 import shutil
 import time
 from pathlib import Path
 from pyspark.sql import SparkSession
 
-import sys
+CLUSTER_MODE   = os.environ.get("CLUSTER_MODE", "false").lower() == "true"
+S3_OUTPUT_BASE = os.environ.get("S3_OUTPUT_BASE", "")
+
 # ─── Paths ────────────────────────────────────────────────────────────────────
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 INPUT_PATH   = sys.argv[1] if len(sys.argv) > 1 else str(PROJECT_ROOT / "data" / "cleaned" / "flight_data_2024_cleaned.parquet")
-OUTPUT_PATH  = str(PROJECT_ROOT / "results" / "analysis_3" / "spark_sql")
-os.makedirs(OUTPUT_PATH, exist_ok=True)
+
+if CLUSTER_MODE and S3_OUTPUT_BASE:
+    OUTPUT_PATH = f"{S3_OUTPUT_BASE}/analysis_3/spark_sql"
+else:
+    OUTPUT_PATH = str(PROJECT_ROOT / "results" / "analysis_3" / "spark_sql")
+    os.makedirs(OUTPUT_PATH, exist_ok=True)
 
 # ─── SparkSession ─────────────────────────────────────────────────────────────
-spark = SparkSession.builder \
+_shuffle_parts = "200" if CLUSTER_MODE else "8"
+builder = SparkSession.builder \
     .appName("Analysis_3.3_Ranking_SparkSQL") \
-    .master("local[*]") \
-    .config("spark.sql.shuffle.partitions", "8") \
-    .config("spark.driver.memory", "4g") \
-    .getOrCreate()
+    .config("spark.sql.shuffle.partitions", _shuffle_parts)
+if not CLUSTER_MODE:
+    builder = builder.master("local[*]").config("spark.driver.memory", "4g")
+spark = builder.getOrCreate()
 
 spark.sparkContext.setLogLevel("WARN")
 
@@ -97,19 +105,24 @@ query = """
 result = spark.sql(query)
 
 # ─── Salvataggio ──────────────────────────────────────────────────────────────
-result.coalesce(1).write.mode("overwrite") \
-    .option("header", "true") \
-    .option("delimiter", "|") \
-    .csv(f"{OUTPUT_PATH}/ranking_raw")
-
-parts = glob.glob(f"{OUTPUT_PATH}/ranking_raw/part-*.csv")
-if parts and "cleaned" in INPUT_PATH:
-    shutil.copy(parts[0], f"{OUTPUT_PATH}/output.csv")
-    print(f"Dataset completo rilevato. Risultati salvati in {OUTPUT_PATH}/output.csv")
-elif parts:
-    print(f"Dataset sample rilevato. Salto aggiornamento {OUTPUT_PATH}/output.csv")
-
-shutil.rmtree(f"{OUTPUT_PATH}/ranking_raw", ignore_errors=True)
+if CLUSTER_MODE:
+    result.coalesce(1).write.mode("overwrite") \
+        .option("header", "true") \
+        .option("delimiter", "|") \
+        .csv(OUTPUT_PATH)
+    print(f"Risultati salvati in: {OUTPUT_PATH}")
+else:
+    result.coalesce(1).write.mode("overwrite") \
+        .option("header", "true") \
+        .option("delimiter", "|") \
+        .csv(f"{OUTPUT_PATH}/ranking_raw")
+    parts = glob.glob(f"{OUTPUT_PATH}/ranking_raw/part-*.csv")
+    if parts and "cleaned" in INPUT_PATH:
+        shutil.copy(parts[0], f"{OUTPUT_PATH}/output.csv")
+        print(f"Dataset completo rilevato. Risultati salvati in {OUTPUT_PATH}/output.csv")
+    elif parts:
+        print(f"Dataset sample rilevato. Salto aggiornamento {OUTPUT_PATH}/output.csv")
+    shutil.rmtree(f"{OUTPUT_PATH}/ranking_raw", ignore_errors=True)
 
 elapsed = round(time.time() - start, 2)
 print(f"\nTempo di esecuzione: {elapsed}s")
