@@ -25,84 +25,83 @@ Executed both **locally** (single machine) and on **AWS EMR cluster** (1 master 
 ```
 Hadoop-Hive-Spark-FlightsDelay/
 │
-├── data_preparation/               # Data cleaning and sample generation
-│   ├── cleaning.py                 # Raw → cleaned CSV (removes outliers, normalizes)
-│   ├── convert_to_parquet.py       # Cleaned CSV → Parquet (for Hive/Spark)
-│   └── generate_samples.py        # Generates 10/25/50/125/150% dataset samples
+├── data_preparation/              
+│   ├── cleaning.py                
+│   ├── convert_to_parquet.py       
+│   └── generate_samples.py        
 │
-├── analysis_1_airline_stats/       # Analysis 3.1 — Airline statistics per airport/month
+├── analysis_1_airline_stats/       
 │   ├── mapreduce/
-│   │   ├── mapper.py               # Emits (carrier|origin|month → arr_delay|cancelled)
-│   │   ├── reducer.py              # Aggregates running stats per group
-│   │   └── run.sh                  # Launcher (local HDFS or S3)
+│   │   ├── mapper.py               
+│   │   ├── reducer.py              
+│   │   └── run.sh                  
 │   ├── hive/
-│   │   ├── queries.hql             # HQL with CTEs and COLLECT_SET for active months
+│   │   ├── queries.hql             
 │   │   └── run.sh
 │   └── spark_sql/
-│       ├── job.py                  # PySpark SQL with ARRAY_JOIN + window aggregation
+│       ├── job.py                  
 │       └── run.sh
 │
-├── analysis_2_delay_report/        # Analysis 3.2 — Delay report by airport, month, band
+├── analysis_2_delay_report/        
 │   ├── hive/
-│   │   ├── queries.hql             # CASE WHEN delay bands + cause aggregation
+│   │   ├── queries.hql            
 │   │   └── run.sh
 │   ├── spark_core/
-│   │   ├── job.py                  # RDD pipeline: reduceByKey bands + flatMap causes
+│   │   ├── job.py                  
 │   │   └── run.sh
 │   └── spark_sql/
-│       ├── job.py                  # SQL with CASE WHEN + UNION ALL causes + ROW_NUMBER
+│       ├── job.py                  
 │       └── run.sh
 │
-├── analysis_3_ranking/             # Analysis 3.3 — Carrier-airport anomaly ranking
+├── analysis_3_ranking/             
 │   ├── mapreduce/
-│   │   ├── mapper.py               # Emits (origin|carrier → dep_delay|arr_delay|cancelled)
-│   │   ├── reducer.py              # Computes airport averages and per-carrier ranking
+│   │   ├── mapper.py               
+│   │   ├── reducer.py             
 │   │   └── run.sh
 │   ├── spark_core/
-│   │   ├── job.py                  # RDD: reduceByKey stats → groupByKey airport avg → rank
+│   │   ├── job.py                  
 │   │   └── run.sh
 │   └── spark_sql/
-│       ├── job.py                  # RANK() OVER (PARTITION BY origin ORDER BY avg_dep)
+│       ├── job.py                 
 │       └── run.sh
 │
-├── aws/                            # AWS EMR cluster management scripts
-│   ├── config.sh                   # Central config: bucket, cluster size, Spark params
-│   ├── create_cluster.sh           # Creates EMR cluster (emr-7.2.0, m5.xlarge)
-│   ├── upload_data.sh              # Uploads data and scripts to S3
-│   ├── run_benchmarks_cluster.sh   # Full benchmark suite on EMR master node
-│   ├── rerun_mapreduce_cluster.sh  # Re-runs only MapReduce jobs on cluster
-│   └── collect_results.sh         # Downloads results from S3 to local results/cluster/
+├── aws/                            
+│   ├── config.sh                  
+│   ├── create_cluster.sh           
+│   ├── upload_data.sh              
+│   ├── run_benchmarks_cluster.sh   
+│   ├── rerun_mapreduce_cluster.sh 
+│   └── collect_results.sh         
 │
-├── benchmarks/                     # Benchmark infrastructure and results
-│   ├── benchmark_tracker.py        # Wraps any job, measures wall time, writes CSV
-│   ├── run_benchmarks.sh           # Full benchmark loop (local + cluster mode)
-│   ├── collect_samples.py          # Extracts top-10 rows from each result
-│   ├── results_local.csv           # 54 benchmark measurements (local)
-│   ├── results_cluster.csv         # 54 benchmark measurements (AWS EMR)
-│   ├── analisi_benchmark_local.ipynb    # Analysis notebook — local results
-│   ├── analisi_benchmark_cluster.ipynb  # Analysis notebook — cluster results
-│   ├── confronto_locale_cluster.ipynb   # Local vs cluster comparison notebook
-│   ├── plots_local/                # Generated charts — local environment
-│   ├── plots_cluster/              # Generated charts — cluster environment
-│   └── plots_local_vs_cluster/     # Generated charts — comparison
+├── benchmarks/                    
+│   ├── benchmark_tracker.py        
+│   ├── run_benchmarks.sh           
+│   ├── collect_samples.py          
+│   ├── results_local.csv           
+│   ├── results_cluster.csv        
+│   ├── analisi_benchmark_local.ipynb    
+│   ├── analisi_benchmark_cluster.ipynb 
+│   ├── confronto_locale_cluster.ipynb   
+│   ├── plots_local/              
+│   ├── plots_cluster/              
+│   └── plots_local_vs_cluster/    
 │
-├── data/                           # Datasets (git-ignored, see below)
+├── data/                           
 │   ├── raw/                        # Original Kaggle CSV (~1.1 GB)
 │   ├── cleaned/                    # Cleaned CSV (354 MB) + Parquet (43 MB)
 │   └── samples/                    # Benchmark samples (10/25/50/125/150%)
 │
-├── eda/                            # Exploratory Data Analysis
+├── eda/                            
 │   ├── eda_pre_cleaning.ipynb      # EDA on raw dataset
 │   ├── eda_post_cleaning.ipynb     # EDA after cleaning
-│   └── plots/                      # EDA charts
+│   └── plots/                      
 │
-├── results/                        # Analysis outputs (top-10 CSVs per job)
+├── results/                        
 │   ├── analysis_1/
 │   ├── analysis_2/
-│   ├── analysis_3/
-│   └── cluster/                    # Outputs downloaded from S3
-│
-├── relazione.tex                   # LaTeX report (final submission)
+│   └── analysis_3/
+│                   
+│                
 ├── requirements.txt                # Python dependencies
 └── .gitignore
 ```
@@ -124,13 +123,12 @@ For each `(origin, carrier)`: performance metrics compared against the airport a
 
 ## Technologies
 
-| Technology | Version | Input format 
-|---|---|---|---|
-| MapReduce | Hadoop 3.4.1 (Streaming) | CSV 
-| Apache Hive | 2.3.9 | Parquet 
-| Spark Core | 3.5.8 | Parquet 
-| Spark SQL | 3.5.8 | Parquet 
-
+| Technology | Version | Input format |
+| :--- | :--- | :--- |
+| MapReduce | Hadoop 3.4.1 (Streaming) | CSV |
+| Apache Hive | 2.3.9 | Parquet |
+| Spark Core | 3.5.8 | Parquet |
+| Spark SQL | 3.5.8 | Parquet |
 All jobs support both **local** and **cluster** mode via the `CLUSTER_MODE=true` environment variable. Output is routed to S3 automatically when running on cluster.
 
 ---
