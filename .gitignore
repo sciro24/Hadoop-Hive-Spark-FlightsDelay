@@ -14,7 +14,9 @@ data/samples/*
 Descrizione Progetto.pdf
 *.zip
 
-# ─── Relazione LaTeX — artefatti di compilazione ──────────────────────────────
+# ─── Relazione LaTeX — sorgente e artefatti di compilazione ───────────────────
+relazione.tex
+relazione.pdf
 *.aux
 *.toc
 *.out
