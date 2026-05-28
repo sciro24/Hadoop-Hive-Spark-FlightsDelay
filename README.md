@@ -25,83 +25,82 @@ Executed both **locally** (single machine) and on **AWS EMR cluster** (1 master 
 ```
 Hadoop-Hive-Spark-FlightsDelay/
 │
-├── data_preparation/              
-│   ├── cleaning.py                
-│   ├── convert_to_parquet.py       
-│   └── generate_samples.py        
+├── data_preparation/
+│   ├── cleaning.py
+│   ├── convert_to_parquet.py
+│   └── generate_samples.py
 │
-├── analysis_1_airline_stats/       
+├── analysis_1_airline_stats/
 │   ├── mapreduce/
-│   │   ├── mapper.py               
-│   │   ├── reducer.py              
-│   │   └── run.sh                  
+│   │   ├── mapper.py
+│   │   ├── reducer.py
+│   │   └── run.sh
 │   ├── hive/
-│   │   ├── queries.hql             
+│   │   ├── queries.hql
 │   │   └── run.sh
 │   └── spark_sql/
-│       ├── job.py                  
+│       ├── job.py
 │       └── run.sh
 │
-├── analysis_2_delay_report/        
+├── analysis_2_delay_report/
 │   ├── hive/
-│   │   ├── queries.hql            
+│   │   ├── queries.hql
 │   │   └── run.sh
 │   ├── spark_core/
-│   │   ├── job.py                  
+│   │   ├── job.py
 │   │   └── run.sh
 │   └── spark_sql/
-│       ├── job.py                  
+│       ├── job.py
 │       └── run.sh
 │
-├── analysis_3_ranking/             
+├── analysis_3_ranking/
 │   ├── mapreduce/
-│   │   ├── mapper.py               
-│   │   ├── reducer.py             
+│   │   ├── mapper.py
+│   │   ├── reducer.py
 │   │   └── run.sh
 │   ├── spark_core/
-│   │   ├── job.py                  
+│   │   ├── job.py
 │   │   └── run.sh
 │   └── spark_sql/
-│       ├── job.py                 
+│       ├── job.py
 │       └── run.sh
 │
-├── aws/                            
-│   ├── config.sh                  
-│   ├── create_cluster.sh           
-│   ├── upload_data.sh              
-│   ├── run_benchmarks_cluster.sh   
-│   ├── rerun_mapreduce_cluster.sh 
-│   └── collect_results.sh         
+├── aws/
+│   ├── config.sh
+│   ├── create_cluster.sh
+│   ├── upload_data.sh
+│   ├── run_benchmarks_cluster.sh
+│   └── collect_results.sh
 │
-├── benchmarks/                    
-│   ├── benchmark_tracker.py        
-│   ├── run_benchmarks.sh           
-│   ├── collect_samples.py          
-│   ├── results_local.csv           
-│   ├── results_cluster.csv        
-│   ├── analisi_benchmark_local.ipynb    
-│   ├── analisi_benchmark_cluster.ipynb 
-│   ├── confronto_locale_cluster.ipynb   
-│   ├── plots_local/              
-│   ├── plots_cluster/              
-│   └── plots_local_vs_cluster/    
+├── benchmarks/
+│   ├── benchmark_tracker.py
+│   ├── run_benchmarks.sh
+│   ├── collect_samples.py
+│   ├── results_local.csv
+│   ├── results_cluster.csv
+│   ├── analisi_benchmark_local.ipynb
+│   ├── analisi_benchmark_cluster.ipynb
+│   ├── confronto_locale_cluster.ipynb
+│   ├── plots_local/
+│   ├── plots_cluster/
+│   └── plots_local_vs_cluster/
 │
-├── data/                           
+├── data/
 │   ├── raw/                        # Original Kaggle CSV (~1.1 GB)
 │   ├── cleaned/                    # Cleaned CSV (354 MB) + Parquet (43 MB)
 │   └── samples/                    # Benchmark samples (10/25/50/125/150%)
 │
-├── eda/                            
+├── eda/
 │   ├── eda_pre_cleaning.ipynb      # EDA on raw dataset
 │   ├── eda_post_cleaning.ipynb     # EDA after cleaning
-│   └── plots/                      
+│   └── plots/
 │
-├── results/                        
+├── results/
 │   ├── analysis_1/
 │   ├── analysis_2/
 │   └── analysis_3/
-│                   
-│                
+│
+│
 ├── requirements.txt                # Python dependencies
 └── .gitignore
 ```
@@ -111,24 +110,27 @@ Hadoop-Hive-Spark-FlightsDelay/
 ## Analyses
 
 ### 3.1 — Airline Statistics
+
 For each `(carrier, origin, month)` tuple: number of flights, min/max/avg arrival delay, cancellation rate, list of active months.
 
 ### 3.2 — Delay Report by Airport and Period
+
 For each `(origin, month)`: flights split into **low** (<15 min), **medium** (15–60 min) and **high** (>60 min) departure delay bands, with average dep/arr delay per band and top-3 delay causes.
 
 ### 3.3 — Carrier–Airport Anomaly Ranking
+
 For each `(origin, carrier)`: performance metrics compared against the airport average — dep/arr delay, cancellation rate, delta from airport mean, and rank (best to worst) within the airport.
 
 ---
 
 ## Technologies
 
-| Technology | Version | Input format |
-| :--- | :--- | :--- |
-| MapReduce | Hadoop 3.4.1 (Streaming) | CSV |
-| Apache Hive | 2.3.9 | Parquet |
-| Spark Core | 3.5.8 | Parquet |
-| Spark SQL | 3.5.8 | Parquet |
+| Technology  | Version                  | Input format |
+| :---------- | :----------------------- | :----------- |
+| MapReduce   | Hadoop 3.4.1 (Streaming) | CSV          |
+| Apache Hive | 2.3.9                    | Parquet      |
+| Spark Core  | 3.5.8                    | Parquet      |
+| Spark SQL   | 3.5.8                    | Parquet      |
 
 All jobs support both **local** and **cluster** mode via the `CLUSTER_MODE=true` environment variable. Output is routed to S3 automatically when running on cluster.
 
@@ -139,8 +141,8 @@ All jobs support both **local** and **cluster** mode via the `CLUSTER_MODE=true`
 ### 1. Prerequisites
 
 - Python 3.10+
-- Apache Hadoop 
-- Apache Hive 3.4.1
+- Apache Hadoop
+- Apache Hive 2.3.9
 - Apache Spark 3.5.8
 - Java 11+
 
@@ -178,7 +180,6 @@ python3 data_preparation/convert_to_parquet.py
 python3 data_preparation/generate_samples.py
 ```
 
-
 ### 4. Run the Full Benchmark Suite
 
 ```bash
@@ -197,11 +198,11 @@ cd benchmarks
 jupyter lab
 ```
 
-| Notebook | Description |
-|---|---|
-| `analisi_benchmark_local.ipynb` | Charts and tables for local benchmark results |
+| Notebook                          | Description                                     |
+| --------------------------------- | ----------------------------------------------- |
+| `analisi_benchmark_local.ipynb`   | Charts and tables for local benchmark results   |
 | `analisi_benchmark_cluster.ipynb` | Charts and tables for cluster benchmark results |
-| `confronto_locale_cluster.ipynb` | Side-by-side local vs cluster comparison |
+| `confronto_locale_cluster.ipynb`  | Side-by-side local vs cluster comparison        |
 
 Charts are saved automatically to `plots_local/`, `plots_cluster/`, and `plots_local_vs_cluster/`.
 
@@ -235,18 +236,17 @@ bash aws/upload_data.sh
 ```bash
 bash aws/create_cluster.sh
 
-After cluster creation, open port 22 in the EMR master Security Group:  
+After cluster creation, open port 22 in the EMR master Security Group:
 AWS Console → EC2 → Security Groups → `ElasticMapReduce-master` → Inbound rules → Add SSH rule
 ```
 
 ### 4. Run Benchmarks on the Cluster
 
-
 # Run full benchmark suite
+
 ```
 bash aws/run_benchmarks_cluster.sh
 ```
-
 
 ## Requirements
 
